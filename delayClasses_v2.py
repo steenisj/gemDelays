@@ -7,10 +7,10 @@ import re
 import ROOT
 import statistics
 
-original_directory = os.getcwd()
+'''original_directory = os.getcwd()
 sys.path.append('/afs/cern.ch/user/j/jsteenis/public/steenis-general-functions')
 import general_functions as steen
-sys.path.append(original_directory)
+sys.path.append(original_directory)'''
 
 #For pulling the data to be processed
 class dataRetriever():
@@ -35,25 +35,25 @@ class dataRetriever():
             
 #This is initialized at the chamber level. Every chamber will have to re-initialize this class.
 class delayGenerator():
-    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, division_width=64, num_optimize_steps=5, added_string="_intCorrectionApplied"):
+    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5, added_string="_intCorrectionApplied"):
         if histo==None or histo_name==None:
             self.status = False
         
         else:
+            self.general = generalFunctions()
             self.status = True
             self.histo = histo #Input histo
             self.histo_name = histo_name #Input histo name
             self.filename = filename
             self.reference_point = reference_point
             self.rebin_num = rebin_num
-            self.division_width = division_width
             self.num_optimize_steps = num_optimize_steps
             self.added_string = added_string
             self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
             self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
             self.float_applied_histo = self.applier(self.all_df_float["0.0"]['delay'], self.histo, hist_string=self.added_string)
             
-            self.int_df = self.int_optimizer()
+            self.int_df, self.min_reference_point = self.int_optimizer()
             self.int_applied_histo = self.applier(self.int_df['bunchDelay'], self.histo, hist_string=self.added_string)
             self.int_differences = self.df_to_hist(self.int_df)
             
@@ -129,17 +129,17 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.grouper(self.histo)
-        fit_means_hist, fit_sigmas_hist = steen.fit_2d_histogram(rebinned_hist, "results/fitInformation_"+self.histo_name+".root", init_params=[0,8,1,0], param_limits={1:[0,15], 2:[0,4]})
+        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,8,1,0], param_limits={1:[0,15], 2:[0,4]})
         
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1, self.num_optimize_steps)[0:-1]:
-            difference_hist = steen.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
+            difference_hist = self.general.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
             expanded_difference_hist = self.expander(difference_hist)
             all_expanded_difference_hists[i] = expanded_difference_hist
-            all_delay_df[str(i)] = steen.histogram_to_df(expanded_difference_hist, "padID", "delay")
+            all_delay_df[str(i)] = self.general.histogram_to_df(expanded_difference_hist, "padID", "delay")
             self.apply_info_to_df(all_delay_df[str(i)])          
                     
-        return all_delay_df, all_expanded_difference_hists[0], steen.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
+        return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
             
     def applier(self, correction_df, histo, hist_string=""):
         if len(correction_df)!=1536:
@@ -168,36 +168,30 @@ class delayGenerator():
             all_delays_df_wInt[key] = DI.delays
             all_int_applied_histos[key] = self.applier(DI.delays['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])#DI.int_applied_histo
         
-        #Cycle through all the vfats
-        for vfat in np.arange(int(1536/self.division_width)):
-            for i, diffs in enumerate(all_int_applied_histos.items()):
-                temp_profileX = diffs[1].ProfileX()
-                temp_binContent_values = [] #For storing the bin contents for this histo
-                for j in range(int((self.division_width*vfat)+1), int((self.division_width*(vfat+1)))+1):
-                    content = temp_profileX.GetBinContent(j)
-                    temp_binContent_values.append(content)
+        for i, diffs in enumerate(all_int_applied_histos.items()):
+            temp_profileX = diffs[1].ProfileX()
+            temp_binContent_values = [] #For storing the bin contents for this histo
+
+            for j in range(0, 1536):
+                print(j)
+                content = temp_profileX.GetBinContent(j)
+                temp_binContent_values.append(content)
                 
-                temp_stdev = statistics.stdev(temp_binContent_values)
+            temp_stdev = statistics.stdev(temp_binContent_values)
                 
-                if vfat not in list(fit_stdev_values.keys()):
-                    fit_stdev_values[vfat] = [temp_stdev]
-                else:
-                    fit_stdev_values[vfat].append(temp_stdev)
+            if "stDevs" not in list(fit_stdev_values.keys()):
+                fit_stdev_values["stDevs"] = [temp_stdev]
+            else:
+                fit_stdev_values["stDevs"].append(temp_stdev)
                     
         #Now that we have the correct reference_number_offset index, now we can collect the proper delays from the df
         print(fit_stdev_values)
-        for key in fit_stdev_values.keys():  
-            print(key)
-            min_index = np.argmin(fit_stdev_values[key])
-            min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
-            print(min_offset_key)
-            
-            if int_optimized_df is None:   
-                int_optimized_df=all_delays_df_wInt[min_offset_key].iloc[int(key)*self.division_width:(int(key)+1)*self.division_width]
-                
-            else:
-                int_optimized_df = pd.concat([int_optimized_df, all_delays_df_wInt[min_offset_key].iloc[int(key)*self.division_width:(int(key)+1)*self.division_width]], ignore_index=True)
-        return int_optimized_df   
+        min_index = np.argmin(fit_stdev_values["stDevs"])
+        min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
+        print(min_offset_key)    
+        int_optimized_df=all_delays_df_wInt[min_offset_key]
+
+        return int_optimized_df, min_offset_key 
     
 #For taking the float delays and converting them into the application-specific quantities, integerizing first.
 class delayIntegerizer():
@@ -220,3 +214,119 @@ class delayIntegerizer():
         self.delays['bunchDelay'] = temp_rounded_values
         #print(self.delays['bunchDelay'], "\n", self.delays['delay'])
         self.delays['remainder'] = self.delays['bunchDelay'] - self.delays['delay']
+
+
+#General functions used in the processing
+class generalFunctions():
+    def __init__(self):
+        pass
+
+    #Iterates over all x bins in a 2d histogram, fits them with a gaussian and outputs a root file containing:
+    #1) a histo with the means as a function of x bin
+    #2) a histo with the sigmas as a function of the x bin
+    #3) canvases with all of the individual fits
+    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False):
+        ROOT.gROOT.SetBatch(True)
+        if (fit_range is not None) and (max_straddle is not False):
+            print("Warning, you have selected two different fit methods. The first one will be chosen.")
+            print("Your options are: Whole histo (default), fit_range, or max_straddle")
+
+        outfile = None
+        if output_file is not None:
+            outfile = ROOT.TFile(output_file, "RECREATE")
+
+        # Check if the input histogram exists
+        if not h2d:
+            print("Error: Input histogram not found.")
+            if output_file is not None:
+                outfile.Close()
+            return
+
+        fit_means_hist = ROOT.TH1F("fit_means_"+h2d.GetName(), "Fit Means", h2d.GetNbinsX(), h2d.GetXaxis().GetXmin(), h2d.GetXaxis().GetXmax())
+        fit_sigmas_hist = ROOT.TH1F("fit_sigmas_"+h2d.GetName(), "Fit Sigmas", h2d.GetNbinsX(), h2d.GetXaxis().GetXmin(), h2d.GetXaxis().GetXmax())
+        canvas = ROOT.TCanvas("canvas", "Fits", 800, 600)
+
+        for binx in range(1, h2d.GetNbinsX()+1):
+            h1d = h2d.ProjectionY(f"projection_{binx}", binx, binx)
+            h1d_maxbin = h1d.GetMaximumBin()
+            h1d_maxX = h1d.GetBinCenter(h1d_maxbin)
+
+            if h1d.GetEntries()==0: #Empty bins cause crashes when calling GetParameter(1)
+                continue
+
+            fitted_function = ROOT.TF1("fitted_function", "gaus(0)+pol0(3)")
+
+            if init_params is not None: #Making sure init_params is proper
+                if not isinstance(init_params, list):
+                    raise TypeError("init_params is not a list")
+                elif len(init_params) != 4:
+                    raise ValueError("init_params is the incorrect length, 4")
+                else:
+                    fitted_function.SetParameters(init_params[0], init_params[1], init_params[2])
+
+            if fit_range is not None:
+                fit_min, fit_max = fit_range
+                fitted_function.SetRange(fit_min, fit_max)
+                fit_option = "QR+"
+            elif max_straddle:
+                fitted_function.SetRange(0.8*h1d_maxX, 1.2*h1d_maxX)
+                fit_option = "QR+"
+            else:
+                fit_option = "Q"
+
+            if param_limits is not None: #Making sure param_limits is proper
+                if not isinstance(param_limits, dict):
+                    raise TypeError("param_limits should be a dict of the form {0: [param_max0, param_min0], 1: ..., ...}")
+                else:
+                    for key in param_limits.keys():
+                        fitted_function.SetParLimits(int(key), param_limits[key][0], param_limits[key][1])
+
+
+            h1d.Fit("fitted_function", fit_option)
+
+            if fitted_function.GetParameter(2) < 0:
+                print("Bin ", binx, " has a negative sigma. We will take the absolute value!")
+
+            fit_means_hist.SetBinContent(binx, fitted_function.GetParameter(1))
+            fit_sigmas_hist.SetBinContent(binx, abs(fitted_function.GetParameter(2)))
+
+            h1d.Draw()
+            fitted_function.Draw("same")
+            canvas.Update()
+
+            if outfile is not None:
+                canvas.Write(f"fit_canvas_bin_{binx}")
+
+        if outfile is not None:
+            fit_means_hist.Write("fit_means_hist")
+            fit_sigmas_hist.Write("fit_sigmas_hist")
+            fit_means_hist.SetDirectory(0)
+            fit_sigmas_hist.SetDirectory(0)
+            print("Output made, loser!")
+            outfile.Close()
+
+        return fit_means_hist, fit_sigmas_hist
+
+    #For taking an input histogram (1d) and a float to output the differences as another histogram of the same x range/bins as the input.
+    def compute_difference_histogram(self, input_hist, referenceNum, hist_name_str=""):
+        xmin = input_hist.GetXaxis().GetXmin()
+        xmax = input_hist.GetXaxis().GetXmax()
+        nbins = input_hist.GetNbinsX()
+        output_hist = ROOT.TH1D(input_hist.GetName()+"_differences"+hist_name_str, f"Difference from {referenceNum}", nbins, xmin, xmax)
+
+        for i in range(1, nbins + 1):
+            bin_content = input_hist.GetBinContent(i)
+            difference = referenceNum - bin_content
+            output_hist.SetBinContent(i, difference)
+        return output_hist
+
+    #For outputting histo contents as a pandas dataframe
+    def histogram_to_df(self, hist, x_label, y_label):
+        data = []
+        for i in range(1, hist.GetNbinsX() + 1):
+            bin_center = hist.GetBinCenter(i)
+            bin_value = hist.GetBinContent(i)
+            data.append([bin_center, bin_value])
+
+        df = pd.DataFrame(data, columns=[x_label, y_label])
+        return df

@@ -24,28 +24,17 @@ for input_file_name in files:
     outfile.cd()
     original_histo.Write()
     
-    for i in range(0,num_iterations):        
-        if i==0:    
-            DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, division_width=1536, num_optimize_steps=10, reference_point=10)    
-            if not DG.status:
-                continue
+    DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=10, reference_point=10)    
+    if not DG.status:
+        continue
             
-        else:
-            prev_float_applied_histo = float_applied_histo
-            prev_int_applied_histo = int_applied_histo
-            prev_int_differences = int_differences
-            
-            DG = delayGenerator(prev_int_applied_histo, DR.histo_name, input_file_name, rebin_num=8, division_width=1536, num_optimize_steps=10, reference_point=10+i, added_string="")    
-            if not DG.status:
-                continue
-            
-        outfile.cd()
-        float_applied_histo = DG.float_applied_histo
-        int_applied_histo = DG.int_applied_histo
-        int_differences = DG.int_differences
+    outfile.cd()
+    float_applied_histo = DG.float_applied_histo
+    int_applied_histo = DG.int_applied_histo
+    int_differences = DG.int_differences
     
-        float_applied_histo.Write(int_applied_histo.GetName()+str(i))
-        int_applied_histo.Write(int_applied_histo.GetName()+str(i))
-        int_differences.Write("integer_differences"+str(i))
+    float_applied_histo.Write(int_applied_histo.GetName()+str(i))
+    int_applied_histo.Write(int_applied_histo.GetName()+str(i))
+    int_differences.Write("integer_differences"+str(i))
         
     outfile.Close()
