@@ -168,22 +168,14 @@ class delayGenerator():
             self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
             
             self.int_df, self.min_reference_point = self.int_optimizer()
-            self.int_applied_histo = self.applier(self.int_df['bunchDelay'], self.histo, hist_string="_intCorrectionApplied")
-            self.int_differences = self.df_to_hist(self.int_df)
+            self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
+            self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
             
-            self.int_df['gbtDelays'] = int((self.min_reference_point)*120)
+            self.final_df = self.calc_gbt() #Adds gbt delays to the wf
+            self.gbt_applied_histo = self.gbt_applier(self.final_df['gbtDelay'], self.int_applied_histo, hist_string="_gbtCorrectionApplied")
+            self.gbt_differences = self.df_to_hist(self.final_df["gbtDelay"], self.final_df["padID"], histo_string="_gbtDifferences")
             
-            self.histo.GetXaxis().SetTitle("Expaned Pad ID")
-            self.histo.GetYaxis().SetTitle("Time [bx]")
-            self.histo.SetTitle(self.histo.GetName())
-            
-            self.float_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
-            self.float_applied_histo.GetYaxis().SetTitle("Time [bx]")
-            self.float_applied_histo.SetTitle(self.float_applied_histo.GetName())
-            
-            self.int_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
-            self.int_applied_histo.GetYaxis().SetTitle("Time [bx]")
-            self.int_applied_histo.SetTitle(self.int_applied_histo.GetName())
+            self.format_histos() #Formats the output histos
             
     def gemPad_stringExtractor(self):
         pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
@@ -283,7 +275,8 @@ class delayGenerator():
     def delays_to_int(self, df):
         temp_rounded_values = []
         for i, value in enumerate(df["idealDelay"]):
-            temp_rounded_values.append(math.ceil(value))   
+            temp_rounded_values.append(round(value, 0))
+            #temp_rounded_values.append(math.ceil(value))   
                
         df['bunchDelay'] = temp_rounded_values
         return df
@@ -323,24 +316,40 @@ class delayGenerator():
 
         return int_optimized_df, float(min_offset_key)
     
-    def df_to_hist(self, df, histo_string=""):
-        differences = ROOT.TH1D(self.histo.GetName()+"_intDifferences"+histo_string, self.histo.GetName()+"_intDifferences"+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
-        for i, pid in enumerate(df['padID']):
-            differences.SetBinContent(differences.FindBin(pid), df['bunchDelay'][i])
+    def df_to_hist(self, correction_df, pad_df, histo_string=""):
+        differences = ROOT.TH1D(self.histo.GetName()+histo_string, self.histo.GetName()+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
+        for i, pid in enumerate(pad_df):
+            differences.SetBinContent(differences.FindBin(pid), correction_df[i])
         return differences
     
+    def calc_gbt(self):
+        gbt = int((self.min_reference_point)*120)# + int((math.ceil(self.int_df.loc[:, 'idealDelay'].mean()) - self.int_df.loc[:, 'idealDelay'].mean())*120)
+        temp_df = self.int_df
+        temp_df["gbtDelay"] = gbt
+        return temp_df
     
+    def gbt_applier(self, correction_df, histo, hist_string=""):
+        if len(correction_df)!=1536:
+            print("Applied correction_df is not 1536 long!")
+        applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
+        for n in range(1, histo.GetNbinsX()+1):
+            for m in range(1, histo.GetNbinsY()+1):               
+                applied_histo.SetBinContent(n, m-int(correction_df.iloc[n-1]*120/120), histo.GetBinContent(n, m))
+        return applied_histo
     
-#For taking the float delays and converting them into the application-specific quantities, integerizing first.
-'''class delayIntegerizer():
-    def __init__(self, delay_df, histo, histo_name):                
-        self.delays = delay_df
-        self.histo = histo
-        self.histo_name = histo_name
-        self.delays_to_int() #Generates the integer corrections
+    def format_histos(self):
+        self.histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.histo.GetYaxis().SetTitle("Time [bx]")
+        self.histo.SetTitle(self.histo.GetName())
         
-    def delays_to_int(self):
-        temp_rounded_values = []
-        for i, value in enumerate(self.delays["idealDelay"]):
-            temp_rounded_values.append(math.ceil(value))      
-        self.delays['bunchDelay'] = temp_rounded_values'''
+        self.float_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.float_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.float_applied_histo.SetTitle(self.float_applied_histo.GetName())
+        
+        self.int_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.int_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.int_applied_histo.SetTitle(self.int_applied_histo.GetName())
+        
+        self.gbt_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.gbt_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.gbt_applied_histo.SetTitle(self.gbt_applied_histo.GetName())

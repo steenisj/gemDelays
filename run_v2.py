@@ -29,12 +29,17 @@ for input_file_name in files:
     float_applied_histo = DG.float_applied_histo
     int_applied_histo = DG.int_applied_histo
     int_differences = DG.int_differences
+    gbt_applied_histo = DG.gbt_applied_histo
+    gbt_differences = DG.gbt_differences
     
     float_applied_histo.Write()
     float_applied_histo.ProfileX().Write(float_applied_histo.GetName()+"_profileX")
     int_applied_histo.Write()
     int_applied_histo.ProfileX().Write(int_applied_histo.GetName()+"_profileX")
     int_differences.Write("integer_differences")
+    gbt_applied_histo.Write()
+    gbt_applied_histo.ProfileX().Write(gbt_applied_histo.GetName()+"_profileX")
+    gbt_differences.Write("gbt_differences")
         
     outfile.Close()
     
