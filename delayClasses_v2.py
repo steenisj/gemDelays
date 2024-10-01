@@ -17,7 +17,7 @@ class generalFunctions():
     #   1) a histo with the means as a function of x bin
     #   2) a histo with the sigmas as a function of the x bin
     #   3) canvases with all of the individual fits
-    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False, pol0_from_max=False):
+    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False, pol0_from_back=False):
         ROOT.gROOT.SetBatch(True)
         if (fit_range is not None) and (max_straddle is not False):
             print("Warning, you have selected two different fit methods. The first one will be chosen.")
@@ -268,7 +268,7 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.grouper(self.histo)
-        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,8,1,0], param_limits={1:[0,15], 2:[0,4]}, fit_range=[3,11])
+        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
         
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
