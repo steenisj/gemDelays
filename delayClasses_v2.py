@@ -17,7 +17,7 @@ class generalFunctions():
     #   1) a histo with the means as a function of x bin
     #   2) a histo with the sigmas as a function of the x bin
     #   3) canvases with all of the individual fits
-    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False):
+    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False, pol0_from_max=False):
         ROOT.gROOT.SetBatch(True)
         if (fit_range is not None) and (max_straddle is not False):
             print("Warning, you have selected two different fit methods. The first one will be chosen.")
@@ -55,6 +55,9 @@ class generalFunctions():
                     raise ValueError("init_params is the incorrect length, 4")
                 else:
                     fitted_function.SetParameters(init_params[0], init_params[1], init_params[2])
+
+            if pol0_from_back != False:
+                fitted_function.SetParameter(0, h1d.GetBinContent(h1d.GetBin(pol0_from_back)))
 
             if fit_range is not None:
                 fit_min, fit_max = fit_range
@@ -98,6 +101,20 @@ class generalFunctions():
             outfile.Close()
 
         return fit_means_hist, fit_sigmas_hist
+    
+    #for rounding to the nearest even integer
+    def custom_round(self, value, width):
+        #print("Original: " + str(value))
+        whole_num = int(str(value).split(".")[0])
+        #print("Whole Num: " + str(whole_num))
+        if value%width < 1:
+            #print("Output: " + str(whole_num))
+            return whole_num
+        elif value%width >= 1:
+            #print("Output: " + str(whole_num+1))
+            return whole_num+1
+        else:
+            print("ERROR!")
 
     #For taking an input histogram (1d) and a float to output the differences as another histogram of the same x range/bins as the input.
     def compute_difference_histogram(self, input_hist, referenceNum, hist_name_str=""):
@@ -251,7 +268,7 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.grouper(self.histo)
-        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,8,1,0], param_limits={1:[0,15], 2:[0,4]})
+        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,8,1,0], param_limits={1:[0,15], 2:[0,4]}, fit_range=[3,11])
         
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
@@ -276,7 +293,8 @@ class delayGenerator():
         temp_rounded_values = []
         for i, value in enumerate(df["idealDelay"]):
             temp_rounded_values.append(round(value, 0))
-            #temp_rounded_values.append(math.ceil(value))   
+            #temp_rounded_values.append(math.ceil(value))
+            #temp_rounded_values.append(self.general.custom_round(value,1.25)) 
                
         df['bunchDelay'] = temp_rounded_values
         return df
@@ -311,10 +329,30 @@ class delayGenerator():
         print(fit_stdev_values)
         min_index = np.argmin(fit_stdev_values["stDevs"])
         min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
-        print(min_offset_key)    
-        int_optimized_df=all_delays_df_wInt[min_offset_key]
+        print("Minimum stDev Reference Num: " + min_offset_key)    
+        int_optimized_df = all_delays_df_wInt[min_offset_key]
+        #int_optimized_df = self.anomaly_checker(int_optimized_df)
 
         return int_optimized_df, float(min_offset_key)
+    
+    #Checks for single rebinned chunks that are brought up anomalously due to rounding issues.
+    '''def anomaly_checker(self, df):
+        differenceThreshold = 0.5
+        padBound = 64*14
+        for index, row in df.iterrows():
+            #Have to exclude the ends if we're using bins to the left and right to make a decision
+            if (row["padID"] >= padBound) or (index < self.rebin_num*3):
+                continue
+            else:         
+                #if (np.abs(row["idealDelay"] - df.loc[:, 'idealDelay'][0:padBound].mean()) < differenceThreshold):
+                if (np.abs(row["idealDelay"] - df['idealDelay'][index - self.rebin_num]) < differenceThreshold):
+                    if (np.abs(row["idealDelay"] - df['idealDelay'][index + self.rebin_num]) < differenceThreshold):
+                        #print("\npass0 " + str(np.abs(row["bunchDelay"] - df.loc[:, 'bunchDelay'][0:padBound].mean())))
+                        if (np.abs(row["bunchDelay"] - df.loc[:, 'bunchDelay'][index-self.rebin_num*3:index+self.rebin_num*3].mean()) > differenceThreshold):
+                            df["bunchDelay"][index] += df["bunchDelay"][index+self.rebin_num] - row["bunchDelay"]
+                            print("Removed anomaly for padID " + str(index))
+                                    
+        return df'''
     
     def df_to_hist(self, correction_df, pad_df, histo_string=""):
         differences = ROOT.TH1D(self.histo.GetName()+histo_string, self.histo.GetName()+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
