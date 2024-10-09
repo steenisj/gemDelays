@@ -7,6 +7,220 @@ import re
 import ROOT
 import statistics
 
+#This is initialized at the chamber level. Every chamber will have to re-initialize this class.
+class delayGenerator():
+    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5):
+        if histo==None or histo_name==None:
+            self.status = False
+        
+        else:
+            self.status = True
+            self.general = generalFunctions()
+            self.histo = histo #Input histo
+            self.histo_name = histo_name #Input histo name
+            self.filename = filename
+            self.reference_point = reference_point
+            self.rebin_num = rebin_num
+            self.num_optimize_steps = num_optimize_steps
+            self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
+            self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
+            self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
+            
+            self.int_df, self.min_reference_point = self.int_optimizer()
+            self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
+            self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
+            
+            self.final_df = self.calc_gbt() #Adds gbt delays to the wf
+            self.gbt_applied_histo = self.gbt_applier(self.final_df['gbtDelay'], self.int_applied_histo, hist_string="_gbtCorrectionApplied")
+            self.gbt_differences = self.df_to_hist(self.final_df["gbtDelay"], self.final_df["padID"], histo_string="_gbtDifferences")
+            
+            self.format_histos() #Formats the output histos
+
+            self.final_means, self.final_sigmas = self.general.fit_2d_histogram(self.gbt_applied_histo, output_file="results/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
+            
+    def gemPad_stringExtractor(self):
+        pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
+        match = re.match(pattern, self.filename.split("/")[-1])
+            
+        if match:
+            station = int(match.group(1))
+            region = match.group(2) + str(match.group(3))
+            if "neg" in region:
+                region = region.replace("neg","-")
+                region = int(region)
+            layer = int(match.group(4))
+            chamber = int(match.group(5))
+            return station, region, layer, chamber
+        
+        elif match is None:
+            pattern = r"gemPad_st(\d+)_R(\d+)L(\d+)CH(\d+)"
+            match = re.match(pattern, self.filename.split("/")[-1])
+            
+            if match is None:
+                raise ValueError("Incorrect string format for the input!")
+            
+            station = int(match.group(1))
+            region = str(match.group(2))
+            layer = int(match.group(3))
+            chamber = int(match.group(4))
+            return station, region, layer, chamber   
+        
+    def calc_oh(self):
+        oh = 2*((self.chamber-1)%6)
+        if self.layer== 2:
+            oh += 1
+        return oh
+
+    def calc_amc(self):
+        amc = 2*int((self.chamber-1)/6.0) + 1
+        return amc
+
+    def calc_ifed(self):
+        if self.station<0:
+            return 1467
+        elif self.station>0:
+            return 1468
+        else:
+            raise ValueError("Somehow you got a station of 0 :(")
+
+    def calc_vfat(self, df):
+        vfat_values = []
+        for padID in df['padID']:
+            vfat = 8*int((padID%24)/192.0)+int(padID/64)
+            vfat_values.append(vfat)
+        return vfat_values
+    
+    def apply_info_to_df(self, df):
+        df['oh'] = self.calc_oh()
+        df['amc'] = self.calc_amc()
+        df['vfat'] = self.calc_vfat(df)
+    
+    def grouper(self, hist):
+        hist_copy = hist.Clone()
+        return hist_copy.RebinX(self.rebin_num)
+        
+    def expander(self, hist):
+        hist_copy = ROOT.TH1D(hist.GetName()+"_expanded", hist.GetName()+"_expanded", hist.GetNbinsX()*self.rebin_num, hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
+        
+        #Expands the contents of one one bin in hist to be replicated for X num of bins in the copy        
+        for i in range(1, (hist.GetNbinsX())*(self.rebin_num)+1):
+            hist_copy.SetBinContent(i, hist.GetBinContent(math.ceil(i/(self.rebin_num))))
+            #hist_copy.SetBinError(i, hist.GetBinError(math.ceil(i/(self.rebin_num))))     
+        return hist_copy
+    
+    def data_generator(self):   
+        all_expanded_difference_hists = {}
+        all_delay_df = {}
+        rebinned_hist = self.grouper(self.histo)
+        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
+        
+        #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
+        for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
+            difference_hist = self.general.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
+            expanded_difference_hist = self.expander(difference_hist)
+            all_expanded_difference_hists[i] = expanded_difference_hist
+            all_delay_df[str(i)] = self.general.histogram_to_df(expanded_difference_hist, "padID", "idealDelay")
+            self.apply_info_to_df(all_delay_df[str(i)])          
+                    
+        return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
+            
+    def applier(self, correction_df, histo, hist_string=""):
+        if len(correction_df)!=1536:
+            print("Applied correction_df is not 1536 long!")
+        applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
+        for n in range(1, histo.GetNbinsX()+1):
+            for m in range(1, histo.GetNbinsY()+1):               
+                applied_histo.SetBinContent(n, m+int(correction_df.iloc[n-1]*120), histo.GetBinContent(n, m))
+        return applied_histo
+    
+    def delays_to_int(self, df):
+        temp_rounded_values = []
+        for i, value in enumerate(df["idealDelay"]):
+            if value<0:
+                temp_rounded_values.append(0)
+            else:
+                temp_rounded_values.append(round(value, 0))
+            #temp_rounded_values.append(math.ceil(value))
+            #temp_rounded_values.append(self.general.custom_round(value,1.25)) 
+               
+        df['bunchDelay'] = temp_rounded_values
+        return df
+    
+    def int_optimizer(self):
+        all_delays_df_wInt = {}
+        all_int_applied_histos = {}
+        fit_stdev_values = {} #For storing the individual stdev values
+        int_optimized_df = None
+        
+        for key in self.all_df_float.keys():
+            #DI = delayIntegerizer(self.all_df_float[key], self.histo, str(self.histo_name)+"_"+str(key))
+            all_delays_df_wInt[key] = self.delays_to_int(self.all_df_float[key])#DI.delays
+            all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
+        
+        for i, diffs in enumerate(all_int_applied_histos.items()):
+            temp_profileX = diffs[1].ProfileX()
+            temp_binContent_values = [] #For storing the bin contents for this histo
+
+            for j in range(0, 1536):
+                content = temp_profileX.GetBinContent(j)
+                temp_binContent_values.append(content)
+                
+            temp_stdev = statistics.stdev(temp_binContent_values)
+                
+            if "stDevs" not in list(fit_stdev_values.keys()):
+                fit_stdev_values["stDevs"] = [temp_stdev]
+            else:
+                fit_stdev_values["stDevs"].append(temp_stdev)
+                    
+        #Now that we have the correct reference_number_offset index, now we can collect the proper delays from the df
+        print(fit_stdev_values)
+        min_index = np.argmin(fit_stdev_values["stDevs"])
+        min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
+        print("Minimum stDev Reference Num: " + min_offset_key)    
+        int_optimized_df = all_delays_df_wInt[min_offset_key]
+        #int_optimized_df = self.anomaly_checker(int_optimized_df)
+
+        return int_optimized_df, float(min_offset_key)
+    
+    def df_to_hist(self, correction_df, pad_df, histo_string=""):
+        differences = ROOT.TH1D(self.histo.GetName()+histo_string, self.histo.GetName()+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
+        for i, pid in enumerate(pad_df):
+            differences.SetBinContent(differences.FindBin(pid), correction_df[i])
+        return differences
+    
+    def calc_gbt(self):
+        gbt = int((self.min_reference_point)*120)# + int((math.ceil(self.int_df.loc[:, 'idealDelay'].mean()) - self.int_df.loc[:, 'idealDelay'].mean())*120)
+        temp_df = self.int_df
+        temp_df["gbtDelay"] = gbt
+        return temp_df
+    
+    def gbt_applier(self, correction_df, histo, hist_string=""):
+        if len(correction_df)!=1536:
+            print("Applied correction_df is not 1536 long!")
+        applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
+        for n in range(1, histo.GetNbinsX()+1):
+            for m in range(1, histo.GetNbinsY()+1):               
+                applied_histo.SetBinContent(n, m-int(correction_df.iloc[n-1]*120/120), histo.GetBinContent(n, m))
+        return applied_histo
+    
+    def format_histos(self):
+        self.histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.histo.GetYaxis().SetTitle("Time [bx]")
+        self.histo.SetTitle(self.histo.GetName())
+        
+        self.float_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.float_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.float_applied_histo.SetTitle(self.float_applied_histo.GetName())
+        
+        self.int_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.int_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.int_applied_histo.SetTitle(self.int_applied_histo.GetName())
+        
+        self.gbt_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
+        self.gbt_applied_histo.GetYaxis().SetTitle("Time [bx]")
+        self.gbt_applied_histo.SetTitle(self.gbt_applied_histo.GetName())
+
+
 #General functions used in the processing
 class generalFunctions():
     def __init__(self):
@@ -164,230 +378,3 @@ class dataRetriever():
                 raise ValueError("Was not able to locate the proper histo within .root file! :angerey_face:")
             
             
-            
-#This is initialized at the chamber level. Every chamber will have to re-initialize this class.
-class delayGenerator():
-    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5):
-        if histo==None or histo_name==None:
-            self.status = False
-        
-        else:
-            self.status = True
-            self.general = generalFunctions()
-            self.histo = histo #Input histo
-            self.histo_name = histo_name #Input histo name
-            self.filename = filename
-            self.reference_point = reference_point
-            self.rebin_num = rebin_num
-            self.num_optimize_steps = num_optimize_steps
-            self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
-            self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
-            self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
-            
-            self.int_df, self.min_reference_point = self.int_optimizer()
-            self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
-            self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
-            
-            self.final_df = self.calc_gbt() #Adds gbt delays to the wf
-            self.gbt_applied_histo = self.gbt_applier(self.final_df['gbtDelay'], self.int_applied_histo, hist_string="_gbtCorrectionApplied")
-            self.gbt_differences = self.df_to_hist(self.final_df["gbtDelay"], self.final_df["padID"], histo_string="_gbtDifferences")
-            
-            self.format_histos() #Formats the output histos
-            
-    def gemPad_stringExtractor(self):
-        pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
-        match = re.match(pattern, self.filename.split("/")[-1])
-            
-        if match:
-            station = int(match.group(1))
-            region = match.group(2) + str(match.group(3))
-            if "neg" in region:
-                region = region.replace("neg","-")
-                region = int(region)
-            layer = int(match.group(4))
-            chamber = int(match.group(5))
-            return station, region, layer, chamber
-        
-        elif match is None:
-            pattern = r"gemPad_st(\d+)_R(\d+)L(\d+)CH(\d+)"
-            match = re.match(pattern, self.filename.split("/")[-1])
-            
-            if match is None:
-                raise ValueError("Incorrect string format for the input!")
-            
-            station = int(match.group(1))
-            region = str(match.group(2))
-            layer = int(match.group(3))
-            chamber = int(match.group(4))
-            return station, region, layer, chamber   
-        
-    def calc_oh(self):
-        oh = 2*((self.chamber-1)%6)
-        if self.layer== 2:
-            oh += 1
-        return oh
-
-    def calc_amc(self):
-        amc = 2*int((self.chamber-1)/6.0) + 1
-        return amc
-
-    def calc_ifed(self):
-        if self.station<0:
-            return 1467
-        elif self.station>0:
-            return 1468
-        else:
-            raise ValueError("Somehow you got a station of 0 :(")
-
-    def calc_vfat(self, df):
-        vfat_values = []
-        for padID in df['padID']:
-            vfat = 8*int((padID%24)/192.0)+int(padID/64)
-            vfat_values.append(vfat)
-        return vfat_values
-    
-    def apply_info_to_df(self, df):
-        df['oh'] = self.calc_oh()
-        df['amc'] = self.calc_amc()
-        df['vfat'] = self.calc_vfat(df)
-    
-    def grouper(self, hist):
-        hist_copy = hist.Clone()
-        return hist_copy.RebinX(self.rebin_num)
-        
-    def expander(self, hist):
-        hist_copy = ROOT.TH1D(hist.GetName()+"_expanded", hist.GetName()+"_expanded", hist.GetNbinsX()*self.rebin_num, hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
-        
-        #Expands the contents of one one bin in hist to be replicated for X num of bins in the copy        
-        for i in range(1, (hist.GetNbinsX())*(self.rebin_num)+1):
-            hist_copy.SetBinContent(i, hist.GetBinContent(math.ceil(i/(self.rebin_num))))
-            #hist_copy.SetBinError(i, hist.GetBinError(math.ceil(i/(self.rebin_num))))     
-        return hist_copy
-    
-    def data_generator(self):   
-        all_expanded_difference_hists = {}
-        all_delay_df = {}
-        rebinned_hist = self.grouper(self.histo)
-        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
-        
-        #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
-        for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
-            difference_hist = self.general.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
-            expanded_difference_hist = self.expander(difference_hist)
-            all_expanded_difference_hists[i] = expanded_difference_hist
-            all_delay_df[str(i)] = self.general.histogram_to_df(expanded_difference_hist, "padID", "idealDelay")
-            self.apply_info_to_df(all_delay_df[str(i)])          
-                    
-        return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
-            
-    def applier(self, correction_df, histo, hist_string=""):
-        if len(correction_df)!=1536:
-            print("Applied correction_df is not 1536 long!")
-        applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
-        for n in range(1, histo.GetNbinsX()+1):
-            for m in range(1, histo.GetNbinsY()+1):               
-                applied_histo.SetBinContent(n, m+int(correction_df.iloc[n-1]*120), histo.GetBinContent(n, m))
-        return applied_histo
-    
-    def delays_to_int(self, df):
-        temp_rounded_values = []
-        for i, value in enumerate(df["idealDelay"]):
-            temp_rounded_values.append(round(value, 0))
-            #temp_rounded_values.append(math.ceil(value))
-            #temp_rounded_values.append(self.general.custom_round(value,1.25)) 
-               
-        df['bunchDelay'] = temp_rounded_values
-        return df
-    
-    def int_optimizer(self):
-        all_delays_df_wInt = {}
-        all_int_applied_histos = {}
-        fit_stdev_values = {} #For storing the individual stdev values
-        int_optimized_df = None
-        
-        for key in self.all_df_float.keys():
-            #DI = delayIntegerizer(self.all_df_float[key], self.histo, str(self.histo_name)+"_"+str(key))
-            all_delays_df_wInt[key] = self.delays_to_int(self.all_df_float[key])#DI.delays
-            all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
-        
-        for i, diffs in enumerate(all_int_applied_histos.items()):
-            temp_profileX = diffs[1].ProfileX()
-            temp_binContent_values = [] #For storing the bin contents for this histo
-
-            for j in range(0, 1536):
-                content = temp_profileX.GetBinContent(j)
-                temp_binContent_values.append(content)
-                
-            temp_stdev = statistics.stdev(temp_binContent_values)
-                
-            if "stDevs" not in list(fit_stdev_values.keys()):
-                fit_stdev_values["stDevs"] = [temp_stdev]
-            else:
-                fit_stdev_values["stDevs"].append(temp_stdev)
-                    
-        #Now that we have the correct reference_number_offset index, now we can collect the proper delays from the df
-        print(fit_stdev_values)
-        min_index = np.argmin(fit_stdev_values["stDevs"])
-        min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
-        print("Minimum stDev Reference Num: " + min_offset_key)    
-        int_optimized_df = all_delays_df_wInt[min_offset_key]
-        #int_optimized_df = self.anomaly_checker(int_optimized_df)
-
-        return int_optimized_df, float(min_offset_key)
-    
-    #Checks for single rebinned chunks that are brought up anomalously due to rounding issues.
-    '''def anomaly_checker(self, df):
-        differenceThreshold = 0.5
-        padBound = 64*14
-        for index, row in df.iterrows():
-            #Have to exclude the ends if we're using bins to the left and right to make a decision
-            if (row["padID"] >= padBound) or (index < self.rebin_num*3):
-                continue
-            else:         
-                #if (np.abs(row["idealDelay"] - df.loc[:, 'idealDelay'][0:padBound].mean()) < differenceThreshold):
-                if (np.abs(row["idealDelay"] - df['idealDelay'][index - self.rebin_num]) < differenceThreshold):
-                    if (np.abs(row["idealDelay"] - df['idealDelay'][index + self.rebin_num]) < differenceThreshold):
-                        #print("\npass0 " + str(np.abs(row["bunchDelay"] - df.loc[:, 'bunchDelay'][0:padBound].mean())))
-                        if (np.abs(row["bunchDelay"] - df.loc[:, 'bunchDelay'][index-self.rebin_num*3:index+self.rebin_num*3].mean()) > differenceThreshold):
-                            df["bunchDelay"][index] += df["bunchDelay"][index+self.rebin_num] - row["bunchDelay"]
-                            print("Removed anomaly for padID " + str(index))
-                                    
-        return df'''
-    
-    def df_to_hist(self, correction_df, pad_df, histo_string=""):
-        differences = ROOT.TH1D(self.histo.GetName()+histo_string, self.histo.GetName()+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
-        for i, pid in enumerate(pad_df):
-            differences.SetBinContent(differences.FindBin(pid), correction_df[i])
-        return differences
-    
-    def calc_gbt(self):
-        gbt = int((self.min_reference_point)*120)# + int((math.ceil(self.int_df.loc[:, 'idealDelay'].mean()) - self.int_df.loc[:, 'idealDelay'].mean())*120)
-        temp_df = self.int_df
-        temp_df["gbtDelay"] = gbt
-        return temp_df
-    
-    def gbt_applier(self, correction_df, histo, hist_string=""):
-        if len(correction_df)!=1536:
-            print("Applied correction_df is not 1536 long!")
-        applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
-        for n in range(1, histo.GetNbinsX()+1):
-            for m in range(1, histo.GetNbinsY()+1):               
-                applied_histo.SetBinContent(n, m-int(correction_df.iloc[n-1]*120/120), histo.GetBinContent(n, m))
-        return applied_histo
-    
-    def format_histos(self):
-        self.histo.GetXaxis().SetTitle("Expaned Pad ID")
-        self.histo.GetYaxis().SetTitle("Time [bx]")
-        self.histo.SetTitle(self.histo.GetName())
-        
-        self.float_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
-        self.float_applied_histo.GetYaxis().SetTitle("Time [bx]")
-        self.float_applied_histo.SetTitle(self.float_applied_histo.GetName())
-        
-        self.int_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
-        self.int_applied_histo.GetYaxis().SetTitle("Time [bx]")
-        self.int_applied_histo.SetTitle(self.int_applied_histo.GetName())
-        
-        self.gbt_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
-        self.gbt_applied_histo.GetYaxis().SetTitle("Time [bx]")
-        self.gbt_applied_histo.SetTitle(self.gbt_applied_histo.GetName())

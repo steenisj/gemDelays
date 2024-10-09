@@ -2,6 +2,8 @@ from delayClasses_v2 import *
 
 #files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/chamberSeparatedMcDonalds_rebinned/gemPad_st1_Rneg1L2CH6_hist_chamberSeparated_fineYbinning.root"]
 files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH6_hist_chamberSeparated_fineYbinning.root"]
+#files = [f for f in os.listdir() if os.path.isfile(f) and ".root" in f]
+#print(files)
 
 for input_file_name in files:    
     DR = dataRetriever(input_file_name)
@@ -21,7 +23,7 @@ for input_file_name in files:
     original_histo.Write()
     original_histo.ProfileX().Write(original_histo.GetName()+"_profileX")
     
-    DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=10, reference_point=10)    
+    DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=9)
     if not DG.status:
         continue
             
