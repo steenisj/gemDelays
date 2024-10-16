@@ -45,4 +45,6 @@ for input_file_name in files:
         
     outfile.Close()
     
-    DG.int_df.to_csv("results/delays.csv")
+    #DG.int_df.to_csv("results/delays.csv")
+    DG.final_df.to_csv("results/group_delays.csv", columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False) #group missing after vfat
+    DG.final_df.to_csv("results/gbt_delays.csv", columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False) #gbt missing after oh

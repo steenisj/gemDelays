@@ -30,13 +30,15 @@ class delayGenerator():
             self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
             self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
             
-            self.final_df = self.calc_gbt() #Adds gbt delays to the wf
+            self.final_df = self.calc_gbt_delay() #Adds gbt delays to the wf
             self.gbt_applied_histo = self.gbt_applier(self.final_df['gbtDelay'], self.int_applied_histo, hist_string="_gbtCorrectionApplied")
             self.gbt_differences = self.df_to_hist(self.final_df["gbtDelay"], self.final_df["padID"], histo_string="_gbtDifferences")
             
             self.format_histos() #Formats the output histos
 
             self.final_means, self.final_sigmas = self.general.fit_2d_histogram(self.gbt_applied_histo, output_file="results/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
+            self.final_df["padID"] = self.final_df["padID"].astype(int)
+            self.final_df["bunchDelay"] = self.final_df["bunchDelay"].astype(int)
             
     def gemPad_stringExtractor(self):
         pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
@@ -90,10 +92,40 @@ class delayGenerator():
             vfat_values.append(vfat)
         return vfat_values
     
+    def calc_gbt(self, df):
+        gbt0 = [7,12,13,14,15,23]
+        gbt1 = [0,1,2,3,4,5,6,8,16]
+        gbt2 = [9,10,11,17,18,19,20,21,22]
+        
+        gbt_values = []
+        
+        for vfat in df['vfat']:
+            if int(vfat) in gbt0:
+                temp_gbt = 0
+            elif int(vfat) in gbt1:
+                temp_gbt = 1
+            elif int(vfat) in gbt2:
+                temp_gbt = 2
+            else:
+                temp_gbt = -9999999999
+            gbt_values.append(temp_gbt)
+            
+        return gbt_values
+            
+    def calc_group(self, df):
+        group_values = []
+        for padID in df['padID']:
+            group = int(padID/self.rebin_num)
+            group_values.append(group)
+        return group_values
+    
     def apply_info_to_df(self, df):
         df['oh'] = self.calc_oh()
         df['amc'] = self.calc_amc()
+        df['fed'] = self.calc_ifed()
         df['vfat'] = self.calc_vfat(df)
+        df['gbt'] = self.calc_gbt(df)
+        df['group'] = self.calc_group(df)
     
     def grouper(self, hist):
         hist_copy = hist.Clone()
@@ -188,7 +220,7 @@ class delayGenerator():
             differences.SetBinContent(differences.FindBin(pid), correction_df[i])
         return differences
     
-    def calc_gbt(self):
+    def calc_gbt_delay(self):
         gbt = int((self.min_reference_point)*120)# + int((math.ceil(self.int_df.loc[:, 'idealDelay'].mean()) - self.int_df.loc[:, 'idealDelay'].mean())*120)
         temp_df = self.int_df
         temp_df["gbtDelay"] = gbt
@@ -317,7 +349,7 @@ class generalFunctions():
         return fit_means_hist, fit_sigmas_hist
     
     #for rounding to the nearest even integer
-    def custom_round(self, value, width):
+    '''def custom_round(self, value, width):
         #print("Original: " + str(value))
         whole_num = int(str(value).split(".")[0])
         #print("Whole Num: " + str(whole_num))
@@ -328,7 +360,7 @@ class generalFunctions():
             #print("Output: " + str(whole_num+1))
             return whole_num+1
         else:
-            print("ERROR!")
+            print("ERROR!")'''
 
     #For taking an input histogram (1d) and a float to output the differences as another histogram of the same x range/bins as the input.
     def compute_difference_histogram(self, input_hist, referenceNum, hist_name_str=""):
