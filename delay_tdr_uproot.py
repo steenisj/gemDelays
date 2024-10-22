@@ -1,3 +1,12 @@
+#This script generates the root histograms which will be used to make delays for the GEM chambers.
+#Allows us to run the delay generation many times in a row with less computation time.
+
+#The output is a histogram of expanded padID versus BX. 
+#Note that the binning is in 1/120 of a BX to correspond to the increments at which a gbt can delay.
+#Bins are centered at integers (or 1/120 of an integer)!
+
+#Code by Jacob Steenis, 2024 
+
 import uproot
 import awkward as ak
 import ROOT
@@ -30,15 +39,8 @@ def shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindo
     gemBX = gemPadDigiCluster_PadBX + CSCConstants_LCT_CENTRAL_BX - int(tmbL1aWindowSize/2.0) - gemPadDigiCluster_ClusterALCTMatchTime 
     return gemBX
 
-# Define the filelist containing the root files
-#filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/2023/GEMCommonNtuples/Muon1/370293_ZMu")
-#filelist = filelist + find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/2023/GEMCommonNtuples/Muon0/370293_ZMu") 
-
 filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/385620")
-
-# Define the tree name
 tree_name = "muNtupleProducer/MuDPGTree"
-
 filelist = [x+":"+tree_name for x in filelist]
 
 variables = ["gemPadDigiCluster_layer", "gemPadDigiCluster_station", "gemPadDigiCluster_region", "gemPadDigiCluster_ClusterFirstPad", "gemPadDigiCluster_PadBX", "gemPadDigiCluster_PadClusterSize", "gemPadDigiCluster_etaPartition", "gemPadDigiCluster_chamber", "gemPadDigiCluster_ClusterALCTMatchTime"]
@@ -64,14 +66,13 @@ for station in stations:
                 # Create a TH2F histogram with ROOT
                 h2d = ROOT.TH2F(f"histo_st{station}_R{region_label}L{layer}CH{chamber}", "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
                 print(f"Station {station} Region {region_label} Layer {layer} Chamber {chamber}")
+                
                 # Loop over chunks of data using uproot.iterate
                 counter = 0
                 for data in uproot.iterate(filelist, variables, library='ak'):     
                     counter+=1           
 
                     location_CUT = (data['gemPadDigiCluster_region'] == region) & (data['gemPadDigiCluster_station'] == station) & (data['gemPadDigiCluster_layer'] == layer) & (data['gemPadDigiCluster_chamber'] == chamber)
-                    #match_CUT = data['gemPadDigiCluster_ClusterALCTMatchTime'] < 6
-
                     data = data[location_CUT]
                     
                     gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(data['gemPadDigiCluster_PadBX'],axis=None), ak.flatten(data['gemPadDigiCluster_ClusterALCTMatchTime'],axis=None))])

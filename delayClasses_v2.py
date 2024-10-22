@@ -1,3 +1,6 @@
+#These are the classes that are called when generating the GEM delays.
+#Note that all the work is done within the __init__ function of the delayGenerator ... look there first!
+#Code by Jacob Steenis, 2024
 import math
 import pandas as pd
 import numpy as np
@@ -15,6 +18,8 @@ class delayGenerator():
         
         else:
             self.status = True
+            
+            #Getting parameters
             self.general = generalFunctions()
             self.histo = histo #Input histo
             self.histo_name = histo_name #Input histo name
@@ -22,24 +27,42 @@ class delayGenerator():
             self.reference_point = reference_point
             self.rebin_num = rebin_num
             self.num_optimize_steps = num_optimize_steps
+            
+            #Extracting the data and generating what the "ideal delays" would be
             self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
             self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
             self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
             
+            #Getting the integer delays for the groups
             self.int_df, self.min_reference_point = self.int_optimizer()
             self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
             self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
             
+            #Adding in the gbt delays
             self.final_df = self.calc_gbt_delay() #Adds gbt delays to the wf
             self.gbt_applied_histo = self.gbt_applier(self.final_df['gbtDelay'], self.int_applied_histo, hist_string="_gbtCorrectionApplied")
             self.gbt_differences = self.df_to_hist(self.final_df["gbtDelay"], self.final_df["padID"], histo_string="_gbtDifferences")
             
-            self.format_histos() #Formats the output histos
+            #Formats the output histos
+            self.format_histos()
 
-            self.final_means, self.final_sigmas = self.general.fit_2d_histogram(self.gbt_applied_histo, output_file="results/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
+            #This is just for checking the effect of the delays
+            self.final_means, self.final_sigmas = self.general.fit_2d_histogram(self.gbt_applied_histo, 
+                                                                                output_file="results/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", 
+                                                                                init_params=[0,9,2,0], 
+                                                                                param_limits={1:[4,15], 2:[0,4]}, 
+                                                                                fit_range=[5,13], 
+                                                                                pol0_from_back=14
+                                                                                )
+            
+            #final = with all information
             self.final_df["padID"] = self.final_df["padID"].astype(int)
             self.final_df["bunchDelay"] = self.final_df["bunchDelay"].astype(int)
             
+            #For formatting to be input into the electronics (reducing the final_df)
+            self.group_df = self.df_reducer_group(self.final_df)
+            self.gbt_df = self.df_reducer_gbt(self.final_df)
+    
     def gemPad_stringExtractor(self):
         pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
         match = re.match(pattern, self.filename.split("/")[-1])
@@ -78,9 +101,9 @@ class delayGenerator():
         return amc
 
     def calc_ifed(self):
-        if self.station<0:
+        if self.region<0:
             return 1467
-        elif self.station>0:
+        elif self.region>0:
             return 1468
         else:
             raise ValueError("Somehow you got a station of 0 :(")
@@ -88,10 +111,13 @@ class delayGenerator():
     def calc_vfat(self, df):
         vfat_values = []
         for padID in df['padID']:
-            vfat = 8*int((padID%24)/192.0)+int(padID/64)
+            eta = int(padID/192)
+            phi = int((padID%192)/64)
+            #vfat = 8*int((padID%24)/192.0)+int(padID/64)
+            vfat = eta+phi*8 
             vfat_values.append(vfat)
         return vfat_values
-    
+
     def calc_gbt(self, df):
         gbt0 = [7,12,13,14,15,23]
         gbt1 = [0,1,2,3,4,5,6,8,16]
@@ -115,7 +141,7 @@ class delayGenerator():
     def calc_group(self, df):
         group_values = []
         for padID in df['padID']:
-            group = int(padID/self.rebin_num)
+            group = int(padID/self.rebin_num)%8
             group_values.append(group)
         return group_values
     
@@ -185,7 +211,6 @@ class delayGenerator():
         int_optimized_df = None
         
         for key in self.all_df_float.keys():
-            #DI = delayIntegerizer(self.all_df_float[key], self.histo, str(self.histo_name)+"_"+str(key))
             all_delays_df_wInt[key] = self.delays_to_int(self.all_df_float[key])#DI.delays
             all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
         
@@ -210,7 +235,6 @@ class delayGenerator():
         min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
         print("Minimum stDev Reference Num: " + min_offset_key)    
         int_optimized_df = all_delays_df_wInt[min_offset_key]
-        #int_optimized_df = self.anomaly_checker(int_optimized_df)
 
         return int_optimized_df, float(min_offset_key)
     
@@ -251,8 +275,17 @@ class delayGenerator():
         self.gbt_applied_histo.GetXaxis().SetTitle("Expaned Pad ID")
         self.gbt_applied_histo.GetYaxis().SetTitle("Time [bx]")
         self.gbt_applied_histo.SetTitle(self.gbt_applied_histo.GetName())
-
-
+    
+    #For reducing the df from being based on padID to being based on group number 
+    def df_reducer_group(self, df):
+        temp_df = df.copy()
+        return temp_df.drop_duplicates(subset=['fed', 'amc', 'oh', 'vfat', 'group'])
+    
+    #For reducing the df from being based on padID to being based on gbt number
+    def df_reducer_gbt(self, df):
+        temp_df = df.copy()
+        return temp_df.drop_duplicates(subset=['fed', 'amc', 'oh', 'gbt'])
+        
 #General functions used in the processing
 class generalFunctions():
     def __init__(self):
@@ -343,24 +376,10 @@ class generalFunctions():
             fit_sigmas_hist.Write("fit_sigmas_hist")
             fit_means_hist.SetDirectory(0)
             fit_sigmas_hist.SetDirectory(0)
-            print("Output made, loser!")
+            print("Output made!")
             outfile.Close()
 
         return fit_means_hist, fit_sigmas_hist
-    
-    #for rounding to the nearest even integer
-    '''def custom_round(self, value, width):
-        #print("Original: " + str(value))
-        whole_num = int(str(value).split(".")[0])
-        #print("Whole Num: " + str(whole_num))
-        if value%width < 1:
-            #print("Output: " + str(whole_num))
-            return whole_num
-        elif value%width >= 1:
-            #print("Output: " + str(whole_num+1))
-            return whole_num+1
-        else:
-            print("ERROR!")'''
 
     #For taking an input histogram (1d) and a float to output the differences as another histogram of the same x range/bins as the input.
     def compute_difference_histogram(self, input_hist, referenceNum, hist_name_str=""):

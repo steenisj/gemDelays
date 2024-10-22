@@ -1,11 +1,11 @@
+#This script runs the delay generation.
+#To look under the hood of the classes, look at the delayClasses script
+#Code by Jacob Steenis, 2024
 from delayClasses_v2 import *
 
-#files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/chamberSeparatedMcDonalds_rebinned/gemPad_st1_Rneg1L2CH6_hist_chamberSeparated_fineYbinning.root"]
 files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH6_hist_chamberSeparated_fineYbinning.root"]
-#files = [f for f in os.listdir() if os.path.isfile(f) and ".root" in f]
-#print(files)
-
-for input_file_name in files:    
+for i, input_file_name in enumerate(files):  
+    print("Currently on file: ", input_file_name)  
     DR = dataRetriever(input_file_name)
     original_histo = DR.histo
     
@@ -46,5 +46,10 @@ for input_file_name in files:
     outfile.Close()
     
     #DG.int_df.to_csv("results/delays.csv")
-    DG.final_df.to_csv("results/group_delays.csv", columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False) #group missing after vfat
-    DG.final_df.to_csv("results/gbt_delays.csv", columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False) #gbt missing after oh
+    if i==0:
+        DG.group_df.to_csv("results/group_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False)
+        DG.gbt_df.to_csv("results/gbt_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False)
+
+    else:
+        DG.group_df.to_csv("results/group_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False, header=False)
+        DG.gbt_df.to_csv("results/gbt_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False, header=False)
