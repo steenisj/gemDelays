@@ -226,7 +226,7 @@ class delayGenerator():
             #temp_profileX = corrected_data[1].ProfileX()
             opt_binContent_values = [] #For storing the bin contents for this histo
             temp_hist = ROOT.TH1D(f"tempHist{i}",f"tempHist{i}",50,7,12)
-            for j in range(0, opt_means_hist.GetNbinsX()):
+            for j in range(1, opt_means_hist.GetNbinsX()+1):
             #for j in range(0, 1536):
                 content = opt_means_hist.GetBinContent(j)
                 #opt_binContent_values.append(content)

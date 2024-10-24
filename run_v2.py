@@ -3,7 +3,7 @@
 #Code by Jacob Steenis, 2024
 from delayClasses_v2 import *
 
-files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH6_hist_chamberSeparated_fineYbinning.root"]
+files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH7_hist_chamberSeparated_fineYbinning.root"]
 for i, input_file_name in enumerate(files):  
     print("Currently on file: ", input_file_name)  
     DR = dataRetriever(input_file_name)
