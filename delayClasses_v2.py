@@ -156,18 +156,18 @@ class delayGenerator():
         df['gbt'] = self.calc_gbt(df)
         df['group'] = self.calc_group(df)
     
-    def grouper(self, hist):
+    '''def grouper(self, hist):
         hist_copy = hist.Clone()
-        return hist_copy.RebinX(self.rebin_num)
+        return hist_copy.RebinX(self.rebin_num)'''
         
-    def expander(self, hist):
+    '''def expander(self, hist):
         hist_copy = ROOT.TH1D(hist.GetName()+"_expanded", hist.GetName()+"_expanded", hist.GetNbinsX()*self.rebin_num, hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax())
         
         #Expands the contents of one one bin in hist to be replicated for X num of bins in the copy        
         for i in range(1, (hist.GetNbinsX())*(self.rebin_num)+1):
             hist_copy.SetBinContent(i, hist.GetBinContent(math.ceil(i/(self.rebin_num))))
             #hist_copy.SetBinError(i, hist.GetBinError(math.ceil(i/(self.rebin_num))))     
-        return hist_copy
+        return hist_copy'''
     
     def data_generator(self):   
         all_expanded_difference_hists = {}
@@ -187,9 +187,9 @@ class delayGenerator():
         return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
             
     def applier(self, correction_df, histo, hist_string=""):
-        print(correction_df)
-        if len(correction_df)!=1536:
-            print("Applied correction_df is not 1536 long!")
+        #print(correction_df)
+        #if len(correction_df)!=1536:
+        #    print("Applied correction_df is not 1536 long!")
         applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
         for n in range(1, histo.GetNbinsX()+1):
             for m in range(1, histo.GetNbinsY()+1):              
@@ -220,16 +220,22 @@ class delayGenerator():
             all_delays_df_wInt[key] = self.delays_to_int(self.all_df_float[key])#DI.delays
             all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
         
-        for i, diffs in enumerate(all_int_applied_histos.items()):
-            temp_profileX = diffs[1].ProfileX()
-            temp_binContent_values = [] #For storing the bin contents for this histo
+        for i, corrected_data in enumerate(all_int_applied_histos.items()):
+            opt_means_hist, opt_sigmas_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"results/optimizerCheck_{self.histo_name}_{i}.root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
 
-            for j in range(0, 1536):
-                content = temp_profileX.GetBinContent(j)
-                temp_binContent_values.append(content)
-                
-            temp_stdev = statistics.stdev(temp_binContent_values)
-                
+            #temp_profileX = corrected_data[1].ProfileX()
+            opt_binContent_values = [] #For storing the bin contents for this histo
+            temp_hist = ROOT.TH1D(f"tempHist{i}",f"tempHist{i}",50,7,12)
+            for j in range(0, opt_means_hist.GetNbinsX()):
+            #for j in range(0, 1536):
+                content = opt_means_hist.GetBinContent(j)
+                #opt_binContent_values.append(content)
+                if content:
+                    temp_hist.Fill(content)
+            
+            temp_stdev = temp_hist.GetStdDev()
+            '''temp_stdev = statistics.stdev(opt_binContent_values, ddof=0)
+            print(opt_binContent_values) '''
             if "stDevs" not in list(fit_stdev_values.keys()):
                 fit_stdev_values["stDevs"] = [temp_stdev]
             else:
@@ -257,8 +263,8 @@ class delayGenerator():
         return temp_df
     
     def gbt_applier(self, correction_df, histo, hist_string=""):
-        if len(correction_df)!=1536:
-            print("Applied correction_df is not 1536 long!")
+        #if len(correction_df)!=1536:
+        #    print("Applied correction_df is not 1536 long!")
         applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
         for n in range(1, histo.GetNbinsX()+1):
             for m in range(1, histo.GetNbinsY()+1):               
