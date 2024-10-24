@@ -27,6 +27,9 @@ class delayGenerator():
             self.reference_point = reference_point
             self.rebin_num = rebin_num
             self.num_optimize_steps = num_optimize_steps
+
+            #To rebin the data into groups!
+            self.histo = histo.RebinX(self.rebin_num)
             
             #Extracting the data and generating what the "ideal delays" would be
             self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
@@ -169,13 +172,14 @@ class delayGenerator():
     def data_generator(self):   
         all_expanded_difference_hists = {}
         all_delay_df = {}
-        rebinned_hist = self.grouper(self.histo)
+        rebinned_hist = self.histo #self.grouper(self.histo)
         fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
         
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
             difference_hist = self.general.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
-            expanded_difference_hist = self.expander(difference_hist)
+            #expanded_difference_hist = self.expander(difference_hist)
+            expanded_difference_hist = difference_hist
             all_expanded_difference_hists[i] = expanded_difference_hist
             all_delay_df[str(i)] = self.general.histogram_to_df(expanded_difference_hist, "padID", "idealDelay")
             self.apply_info_to_df(all_delay_df[str(i)])          
@@ -183,11 +187,13 @@ class delayGenerator():
         return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
             
     def applier(self, correction_df, histo, hist_string=""):
+        print(correction_df)
         if len(correction_df)!=1536:
             print("Applied correction_df is not 1536 long!")
         applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
         for n in range(1, histo.GetNbinsX()+1):
-            for m in range(1, histo.GetNbinsY()+1):               
+            for m in range(1, histo.GetNbinsY()+1):              
+                #print(n, m)
                 applied_histo.SetBinContent(n, m+int(correction_df.iloc[n-1]*120), histo.GetBinContent(n, m))
         return applied_histo
     
