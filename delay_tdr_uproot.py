@@ -61,10 +61,26 @@ for station in stations:
                 #To prevent naming issues when accessing via root
                 region_label = str(region)
                 if region<0:
-                    region_label = str(region).replace("-","neg")
+                    #region_label = str(region).replace("-","neg")
+                    region_label = str(region).replace("-1","M")
+                elif region>0:
+                    region_label = str(region).replace("1","P")
                 
+                file_path = f"results/delay_plots/GE1{station}_{region_label}_{chamber}_L{layer}_data.root"
+                hist_name = f"GE1{station}_{region_label}_{chamber}_L{layer}"
+
+                #For checking to see if this has already been processed!
+                if os.path.exists(file_path):
+                    test_file = ROOT.TFile(file_path)
+                    if not test_file.IsZombie():
+                        if test_file.GetListOfKeys().Contains(hist_name):
+                            if not test_file.Get(hist_name).IsZombie():
+                                print(file_path, " exists and is not zombie, skipping it!")
+                                continue
+
                 # Create a TH2F histogram with ROOT
-                h2d = ROOT.TH2F(f"histo_st{station}_R{region_label}L{layer}CH{chamber}", "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
+                #h2d = ROOT.TH2F(f"histo_st{station}_R{region_label}L{layer}CH{chamber}", "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
+                h2d = ROOT.TH2F(hist_name, "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
                 print(f"Station {station} Region {region_label} Layer {layer} Chamber {chamber}")
                 
                 # Loop over chunks of data using uproot.iterate
@@ -96,4 +112,5 @@ for station in stations:
                 h2d.GetXaxis().SetTitle("Expanded Pad ID")
                 h2d.GetYaxis().SetTitle("Bunch Crossing [Giovanni Eqn Applied]")
                 h2d.Draw("COLZ")
-                h2d.SaveAs(f"results/delay_plots/gemPad_st{station}_R{region_label}L{layer}CH{chamber}_hist_chamberSeparated_fineYbinning.root")
+                #h2d.SaveAs(f"results/delay_plots/GE1{station}_{region_label}_{chamber}_L{layer}_data.root")
+                h2d.SaveAs(file_path)
