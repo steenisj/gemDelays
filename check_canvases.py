@@ -7,6 +7,7 @@ import ROOT
 from PIL import Image
 import os
 import sys
+import signal
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptFit(1111)
@@ -48,8 +49,27 @@ def canvases_to_pdf(root_file_path, output_pdf_path, canvas_string="fit_canvas")
         os.remove(image_path)
     os.rmdir(temp_dir)
 
-# Usage
-if len(sys.argv)==3:
-    canvases_to_pdf(sys.argv[1], sys.argv[2])
-elif len(sys.argv)==4:
-    canvases_to_pdf(sys.argv[1], sys.argv[2], canvas_string=sys.argv[3])
+def cleanup_and_exit(signum, frame):
+    print(f"Received signal {signum}. Cleaning up before exit.")
+    os.system('rm -r ./temp_canvas_images')
+
+    # Get the parent process ID (Bash process)
+    parent_pid = os.getppid()
+
+    # Send SIGTERM to the parent process (Bash script)
+    print(f"Killing parent process {parent_pid}")
+    os.kill(parent_pid, signal.SIGTERM)
+
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, cleanup_and_exit)
+signal.signal(signal.SIGTERM, cleanup_and_exit)
+
+
+if __name__ == "__main__":
+    # Usage
+    if len(sys.argv)==3:
+        canvases_to_pdf(sys.argv[1], sys.argv[2])
+    elif len(sys.argv)==4:
+        canvases_to_pdf(sys.argv[1], sys.argv[2], canvas_string=sys.argv[3])

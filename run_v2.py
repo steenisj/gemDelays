@@ -2,8 +2,12 @@
 #To look under the hood of the classes, look at the delayClasses script
 #Code by Jacob Steenis, 2024
 from delayClasses_v2 import *
+import glob
 
-files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH7_hist_chamberSeparated_fineYbinning.root"]
+#files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH7_hist_chamberSeparated_fineYbinning.root"]
+files = glob.glob("./results/delay_plots/*.root")
+#files = ["./results/delay_plots/GE11_P_10_L1_data.root"]
+
 for i, input_file_name in enumerate(files):  
     print("Currently on file: ", input_file_name)  
     DR = dataRetriever(input_file_name)
@@ -17,16 +21,16 @@ for i, input_file_name in enumerate(files):
     #
     # reference_point is the actual number you subtract the mean timing (per padID) to get estimates for
     #       the delays needed
-    
+
+    DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=9)
+    if DG.status == False:
+        continue
+
     outfile = ROOT.TFile(f"results/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
     outfile.cd()
     original_histo.Write()
     original_histo.ProfileX().Write(original_histo.GetName()+"_profileX")
     
-    DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=9)
-    if not DG.status:
-        continue
-            
     outfile.cd()
     float_applied_histo = DG.float_applied_histo
     int_applied_histo = DG.int_applied_histo

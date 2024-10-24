@@ -66,8 +66,8 @@ for station in stations:
                 elif region>0:
                     region_label = str(region).replace("1","P")
                 
-                file_path = f"results/delay_plots/GE1{station}_{region_label}_{chamber}_L{layer}_data.root"
-                hist_name = f"GE1{station}_{region_label}_{chamber}_L{layer}"
+                file_path = f"results/delay_plots/GE{station}1_{region_label}_{chamber}_L{layer}_data.root"
+                hist_name = f"GE{station}1_{region_label}_{chamber}_L{layer}"
 
                 #For checking to see if this has already been processed!
                 if os.path.exists(file_path):

@@ -8,6 +8,7 @@ from PIL import Image
 import os
 import sys
 import glob
+import signal
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptFit(1111)
@@ -32,7 +33,7 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
         hist = root_file.Get("fit_means_hist")
         print(hist)
         canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
-        hist.GetYaxis().SetRangeUser(6,13)
+        hist.GetYaxis().SetRangeUser(4,13)
         hist.Draw()
         hist.SetTitle(file.split("/")[-1].replace(".root",""))
         image_path = os.path.join(temp_dir, f"fit_means_hist{i}.png")
@@ -51,9 +52,28 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
         os.remove(image_path)
     os.rmdir(temp_dir)
 
-# Usage
-if len(sys.argv)==3:
-    means_hists_to_pdf(sys.argv[1], sys.argv[2])
-elif len(sys.argv)==4:
-    means_hists_to_pdf(sys.argv[1], sys.argv[2], file_string=sys.argv[3])
+def cleanup_and_exit(signum, frame):
+    print(f"Received signal {signum}. Cleaning up before exit.")
+    os.system('rm -r ./temp_canvas_images')
+
+    # Get the parent process ID (Bash process)
+    parent_pid = os.getppid()
+    
+    # Send SIGTERM to the parent process (Bash script)
+    print(f"Killing parent process {parent_pid}")
+    os.kill(parent_pid, signal.SIGTERM)
+
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, cleanup_and_exit)
+signal.signal(signal.SIGTERM, cleanup_and_exit)
+
+
+if __name__ == "__main__":
+    # Usage
+    if len(sys.argv)==3:
+        means_hists_to_pdf(sys.argv[1], sys.argv[2])
+    elif len(sys.argv)==4:
+        means_hists_to_pdf(sys.argv[1], sys.argv[2], file_string=sys.argv[3])
 

@@ -67,20 +67,29 @@ class delayGenerator():
             self.gbt_df = self.df_reducer_gbt(self.final_df)
     
     def gemPad_stringExtractor(self):
-        pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
+        #pattern = r"gemPad_st(\d+)_R([a-z]+)(\d+)L(\d+)CH(\d+)"
+        pattern = r"GE(\d)1_([MP])_(\d+)_L(\d)" #r"GE(\d+)1_([a-z]+)_(\d+)_L(\d+)_data"
         match = re.match(pattern, self.filename.split("/")[-1])
             
         if match:
             station = int(match.group(1))
-            region = match.group(2) + str(match.group(3))
-            if "neg" in region:
+            region = match.group(2)
+            if "M" in region:
+                region = int(-1)
+            elif "P" in region:
+                region = int(1)
+            
+            '''if "neg" in region:
                 region = region.replace("neg","-")
-                region = int(region)
+                region = int(region)'''
             layer = int(match.group(4))
-            chamber = int(match.group(5))
+            chamber = int(match.group(3))
             return station, region, layer, chamber
         
-        elif match is None:
+        else:
+            raise ValueError("Incorrect string format for the input!")
+
+        '''elif match is None:
             pattern = r"gemPad_st(\d+)_R(\d+)L(\d+)CH(\d+)"
             match = re.match(pattern, self.filename.split("/")[-1])
             
@@ -91,7 +100,7 @@ class delayGenerator():
             region = str(match.group(2))
             layer = int(match.group(3))
             chamber = int(match.group(4))
-            return station, region, layer, chamber   
+            return station, region, layer, chamber   '''
         
     def calc_oh(self):
         oh = 2*((self.chamber-1)%6)
@@ -428,7 +437,7 @@ class dataRetriever():
     def retriever(self):
         input_file = ROOT.TFile.Open(self.file_path)
         for key in input_file.GetListOfKeys():
-            if "histo_st" in str(key.GetName()):
+            if "GE" in str(key.GetName()):
                 input_histo_name = str(key.GetName())
                 input_histo = input_file.Get(str(key.GetName()))
                 if int(input_histo.GetEntries()) == 0:
