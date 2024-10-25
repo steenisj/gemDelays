@@ -209,10 +209,11 @@ class delayGenerator():
     def delays_to_int(self, df):
         temp_rounded_values = []
         for i, value in enumerate(df["idealDelay"]):
-            if value<0:
+            rounded_value = round(value, 0)
+            if rounded_value<0:
                 temp_rounded_values.append(0)
             else:
-                temp_rounded_values.append(round(value, 0))
+                temp_rounded_values.append(rounded_value)
             #temp_rounded_values.append(math.ceil(value))
             #temp_rounded_values.append(self.general.custom_round(value,1.25)) 
                
