@@ -160,9 +160,9 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
     eta_combinations = eta_combinations[location_mask & proximity_mask]
     firstPad_combinations = firstPad_combinations[location_mask & proximity_mask]
 
-    gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(BX_combinations['cluster_PadBX'],axis=None), ak.flatten(ALC_combinations['cluster_ALC'],axis=None))])
+    '''gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(BX_combinations['cluster_PadBX'],axis=None), ak.flatten(ALC_combinations['cluster_ALC'],axis=None))])
     expandedClusters = ak.Array([clusterIdExpander(firstId, numPads, etaPartition) for firstId, numPads, etaPartition in zip(ak.flatten(firstPad_combinations,axis=None), ak.flatten(size_combinations['cluster_size'],axis=None), ak.flatten(eta_combinations['cluster_eta']))])
-    expandedBX = ak.Array([clusterBXExpander(firstId, numPads) for firstId, numPads in zip(gemBX, ak.flatten(size_combinations['cluster_size'],axis=None))])
+    expandedBX = ak.Array([clusterBXExpander(firstId, numPads) for firstId, numPads in zip(gemBX, ak.flatten(size_combinations['cluster_size'],axis=None))])'''
 
     chamber_combinations = chamber_combinations[location_mask & proximity_mask]
     layer_combinations = layer_combinations[location_mask & proximity_mask]
@@ -180,21 +180,26 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
                         region_label = str(region).replace("-1","M")
                     elif region>0:
                         region_label = str(region).replace("1","P")
+                    hist_station_mask = station_combinations['cluster_station'] == station
+                    hist_layer_mask = layer_combinations['cluster_layer'] == layer
+                    hist_region_mask = region_combinations['cluster_region'] == region
+                    hist_chamber_mask = chamber_combinations['cluster_chamber'] == chamber
+                    hist_location_mask = hist_station_mask & hist_layer_mask & hist_chamber_mask & hist_region_mask
 
-                    station_mask = station_combinations = station
-                    layer_mask = station_combinations = layer
-                    region_mask = station_combinations = region
-                    chamber_mask = station_combinations = chamber
-                    location_mask = station_mask & layer_mask & chamber_mask & region_mask
+                    gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(BX_combinations['cluster_PadBX'][hist_location_mask],axis=None), ak.flatten(ALC_combinations['cluster_ALC'][hist_location_mask],axis=None))])
+                    expandedClusters = ak.Array([clusterIdExpander(firstId, numPads, etaPartition) for firstId, numPads, etaPartition in zip(ak.flatten(firstPad_combinations['cluster_firstPad'][hist_location_mask],axis=None), ak.flatten(size_combinations['cluster_size'][hist_location_mask],axis=None), ak.flatten(eta_combinations['cluster_eta'][hist_location_mask]))])
+                    expandedBX = ak.Array([clusterBXExpander(firstId, numPads) for firstId, numPads in zip(gemBX, ak.flatten(size_combinations['cluster_size'][hist_location_mask],axis=None))])
 
-                    hist_expandedClusters = expandedClusters[location_mask]
-                    hist_expandedBX = expandedBX[location_mask]
+                    #hist_expandedClusters = expandedClusters[hist_location_mask]
+                    #hist_expandedBX = expandedBX[hist_location_mask]
 
                     # Fill the histogram using FillN()
-                    n_events = len(ak.flatten(hist_expandedClusters, axis=None))
-                    x_data = ak.flatten(hist_expandedClusters, axis=None)
-                    y_data = ak.flatten(hist_expandedBX, axis=None)
-                    weights = ak.ones_like(ak.flatten(hist_expandedBX, axis=None))
+                    if len(expandedClusters) != len(expandedBX):
+                        print("DIFFERENT LENGTHS OF CLUSTERS AND BXs")
+                    n_events = len(ak.flatten(expandedClusters, axis=None))
+                    x_data = ak.flatten(expandedClusters, axis=None)
+                    y_data = ak.flatten(expandedBX, axis=None)
+                    weights = ak.ones_like(ak.flatten(expandedBX, axis=None))
 
                     if n_events>0:
                         name = f"GE{station}1_{region_label}_{chamber}_L{layer}"
