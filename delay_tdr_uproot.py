@@ -82,22 +82,6 @@ for station in stations:
 
                 chamber_hists[hist_name] = {"station": station, "region_label": region_label, "chamber": chamber, "layer": layer, "data": temp_hist} 
 
-                #For checking to see if this has already been processed!
-                '''if os.path.exists(file_path):
-                    test_file = ROOT.TFile(file_path)
-                    if not test_file.IsZombie():
-                        if test_file.GetListOfKeys().Contains(hist_name):
-                            if not test_file.Get(hist_name).IsZombie():
-                                print(file_path, " exists and is not zombie, skipping it!")
-                                continue'''
-
-                # Create a TH2F histogram with ROOT
-                #h2d = ROOT.TH2F(f"histo_st{station}_R{region_label}L{layer}CH{chamber}", "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
-                #h2d = ROOT.TH2F(hist_name, "", int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
-                #print(f"Station {station} Region {region_label} Layer {layer} Chamber {chamber}")
-                
-
-
 
 # Loop over chunks of data using uproot.iterate
 counter = 0
@@ -120,20 +104,9 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
     muon_location_mask = (muon_data['mu_propagated_isME11']) & (muon_data['mu_propagated_station']==1) & (muon_data['mu_propagated_region']*muon_data['mu_propagated_Outermost_z']>0) & (muon_data['mu_propagated_etaP']>=1) & (muon_data['mu_propagated_etaP']<=8) & (muon_data['mu_propagated_pt']>10)
     muon_data = muon_data[muon_location_mask]
 
-    #print(len(muon_data))
-    #print(len(cluster_data))
     num_mask = ak.num(muon_data['mu_propagated_isME11'])>0
-    #print(len(num_mask))
     muon_data = muon_data[num_mask]
     cluster_data = cluster_data[num_mask]
-
-    #print(muon_data['mu_propagated_chamber'].tolist()[0])
-    #print(cluster_data['gemPadDigiCluster_chamber'].tolist()[0])
-
-
-    #for muon_field in muon_data.fields:
-    #    for cluster_field in cluster_fields:
-    #       conbinations
 
     chamber_combinations = ak.cartesian({"muon_chamber": muon_data['mu_propagated_chamber'], "cluster_chamber": cluster_data['gemPadDigiCluster_chamber']})
     layer_combinations = ak.cartesian({"muon_layer": muon_data['mu_propagated_layer'], "cluster_layer": cluster_data['gemPadDigiCluster_layer']})
@@ -159,10 +132,6 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
     size_combinations = size_combinations[location_mask & proximity_mask]
     eta_combinations = eta_combinations[location_mask & proximity_mask]
     firstPad_combinations = firstPad_combinations[location_mask & proximity_mask]
-
-    '''gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(BX_combinations['cluster_PadBX'],axis=None), ak.flatten(ALC_combinations['cluster_ALC'],axis=None))])
-    expandedClusters = ak.Array([clusterIdExpander(firstId, numPads, etaPartition) for firstId, numPads, etaPartition in zip(ak.flatten(firstPad_combinations,axis=None), ak.flatten(size_combinations['cluster_size'],axis=None), ak.flatten(eta_combinations['cluster_eta']))])
-    expandedBX = ak.Array([clusterBXExpander(firstId, numPads) for firstId, numPads in zip(gemBX, ak.flatten(size_combinations['cluster_size'],axis=None))])'''
 
     chamber_combinations = chamber_combinations[location_mask & proximity_mask]
     layer_combinations = layer_combinations[location_mask & proximity_mask]
@@ -207,75 +176,6 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
 
 
 for chamber in chamber_hists.keys():
-    chamber_hists[chamber]['data'].SaveAs("results/delay_plots/"+str(chamber)+".root")
+    chamber_hists[chamber]['data'].SaveAs("GEM_mcdonalds_data/"+str(chamber)+".root")
 
 
-#    print(mod_region_combinations)
-
-    # Fill the histogram using FillN()
-    '''n_events = len(ak.flatten(expandedClusters, axis=None))
-    x_data = ak.flatten(expandedClusters, axis=None)
-    y_data = ak.flatten(expandedBX, axis=None)
-    weights = ak.ones_like(ak.flatten(expandedBX, axis=None))
-
-    if n_events>0:
-        if muon_region == -1:
-            muon_region = "M"
-        elif muon_region == 1:
-            muon_region = "P"
-        name = f"GE{muon_station}1_{muon_region}_{muon_chamber}_L{muon_layer}"
-        chamber_hists[name]['data'].FillN(n_events, array('d', x_data), array('d', y_data), array('d', weights))
-
-    #print(combinations['muon_chamber']==combinations['cluster_station'])
-    matchedChamber = []
-    for muon in range(len(data['mu_propagated_isME11'])):
-        
-        if len(ak.flatten(data['mu_propagated_isME11'], axis=None)) == 0:
-            continue
-        
-        if data['mu_propagated_isME11'][0][muon] and data['mu_propagated_station'][0][muon]==1 and data['mu_propagated_region'][0][muon]*data['mu_propagated_Outermost_z'][0][muon]>0 and data['mu_propagated_etaP'][0][muon]>=1 and data['mu_propagated_etaP'][0][muon]<=8 and data['mu_propagated_pt'][0][muon]>10:
-           matchedChamber.append(data['mu_propagated_chamber'][0][muon]) 
-
-    matchedChamber = list(dict.fromkeys(matchedChamber))
-
-    if not matchedChamber:
-        #print("skipping!")
-        continue
-
-    for muon in range(len(data['mu_propagated_isME11'])):
-            muon_station = data['mu_propagated_station'][0][muon]
-            muon_region = data['mu_propagated_region'][0][muon]
-            muon_layer = data['mu_propagated_layer'][0][muon]
-            muon_chamber = data['mu_propagated_chamber'][0][muon]
-
-            if data['mu_propagated_isME11'][0][muon] and muon_station==1 and muon_region*data['mu_propagated_Outermost_z'][0][muon]>0 and data['mu_propagated_etaP'][0][muon]>=1 and data['mu_propagated_etaP'][0][muon]<=8 and data['mu_propagated_pt'][0][muon]>10:
-                location_mask = (data['gemPadDigiCluster_region'] == muon_region) & ((data['gemPadDigiCluster_station'] == muon_station)) & (data['gemPadDigiCluster_layer'] == muon_layer) & (data['gemPadDigiCluster_chamber'] == muon_chamber) & (data['gemPadDigiCluster_etaPartition'] == data['mu_propagated_etaP'][0][muon])
-                proximity_mask = (abs(data['gemPadDigiCluster_ClusterFirstPad'] - int(data['mu_propagated_strip'][0][muon]/2.0)) <= 5)
-                
-                for variable in variables:
-                    if "gemPadDigiCluster" in variable:
-                        data["temp_" + variable] = data[variable][location_mask & proximity_mask]
-
-                gemBX = ak.Array([shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindowSize, gemPadDigiCluster_ClusterALCTMatchTime) for gemPadDigiCluster_PadBX, gemPadDigiCluster_ClusterALCTMatchTime in zip(ak.flatten(data['temp_gemPadDigiCluster_PadBX'],axis=None), ak.flatten(data['temp_gemPadDigiCluster_ClusterALCTMatchTime'],axis=None))])
-                expandedClusters = ak.Array([clusterIdExpander(firstId, numPads, etaPartition) for firstId, numPads, etaPartition in zip(ak.flatten(data['temp_gemPadDigiCluster_ClusterFirstPad'],axis=None), ak.flatten(data['temp_gemPadDigiCluster_PadClusterSize'],axis=None), ak.flatten(data['temp_gemPadDigiCluster_etaPartition']))])
-                expandedBX = ak.Array([clusterBXExpander(firstId, numPads) for firstId, numPads in zip(gemBX, ak.flatten(data['temp_gemPadDigiCluster_PadClusterSize'],axis=None))])
-
-
-                # Fill the histogram using FillN()
-                n_events = len(ak.flatten(expandedClusters, axis=None))
-                x_data = ak.flatten(expandedClusters, axis=None)
-                y_data = ak.flatten(expandedBX, axis=None)
-                weights = ak.ones_like(ak.flatten(expandedBX, axis=None))
-
-                if n_events>0:
-                    if muon_region == -1:
-                        muon_region = "M"
-                    elif muon_region == 1:
-                        muon_region = "P"
-                    name = f"GE{muon_station}1_{muon_region}_{muon_chamber}_L{muon_layer}"
-                    chamber_hists[name]['data'].FillN(n_events, array('d', x_data), array('d', y_data), array('d', weights))
-
-for chamber in chamber_hists.keys():
-    chamber_hists[chamber]['data'].SaveAs("results/delay_plots/"+str(chamber)+".root")
-
-'''

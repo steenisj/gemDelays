@@ -5,7 +5,8 @@ from delayClasses_v2 import *
 import glob
 
 #files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH7_hist_chamberSeparated_fineYbinning.root"]
-files = glob.glob("./results/delay_plots/cleaned_plots/*.root")
+#files = glob.glob("./GEM_mcdonalds_data/*.root")
+files = glob.glob("./GEM_mcdonalds_data/*M_14_L2.root")
 #files = ["./results/delay_plots/GE11_P_10_L1_data.root"]
 
 for i, input_file_name in enumerate(files):  
@@ -26,7 +27,7 @@ for i, input_file_name in enumerate(files):
     if DG.status == False:
         continue
 
-    outfile = ROOT.TFile(f"results/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
+    outfile = ROOT.TFile(f"GEM_delays/delays/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
     outfile.cd()
     original_histo.Write()
     original_histo.ProfileX().Write(original_histo.GetName()+"_profileX")
@@ -51,9 +52,9 @@ for i, input_file_name in enumerate(files):
     
     #DG.int_df.to_csv("results/delays.csv")
     if i==0:
-        DG.group_df.to_csv("results/group_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False)
-        DG.gbt_df.to_csv("results/gbt_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False)
+        DG.group_df.to_csv("GEM_delays/delays/group_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False)
+        DG.gbt_df.to_csv("GEM_delays/delays/gbt_delays.csv", mode='w', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False)
 
     else:
-        DG.group_df.to_csv("results/group_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False, header=False)
-        DG.gbt_df.to_csv("results/gbt_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False, header=False)
+        DG.group_df.to_csv("GEM_delays/delays/group_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False, header=False)
+        DG.gbt_df.to_csv("GEM_delays/delays/gbt_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False, header=False)

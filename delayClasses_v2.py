@@ -51,7 +51,7 @@ class delayGenerator():
 
             #This is just for checking the effect of the delays
             self.final_means, self.final_sigmas = self.general.fit_2d_histogram(self.gbt_applied_histo, 
-                                                                                output_file="results/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", 
+                                                                                output_file="GEM_delays/verification_plots/final/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", 
                                                                                 init_params=[0,9,2,0], 
                                                                                 param_limits={1:[4,15], 2:[0,4]}, 
                                                                                 fit_range=[5,13], 
@@ -182,7 +182,7 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.histo #self.grouper(self.histo)
-        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="results/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
+        fit_means_hist, fit_sigmas_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", init_params=[0,7,2,0], param_limits={1:[2,13], 2:[0,4]}, fit_range=[3,11], pol0_from_back=12)
         
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
@@ -231,7 +231,7 @@ class delayGenerator():
             all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
         
         for i, corrected_data in enumerate(all_int_applied_histos.items()):
-            opt_means_hist, opt_sigmas_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"results/optimizerCheck_{self.histo_name}_{i}.root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
+            opt_means_hist, opt_sigmas_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"GEM_delays/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", init_params=[0,9,2,0], param_limits={1:[4,15], 2:[0,4]}, fit_range=[5,13], pol0_from_back=14)
 
             #temp_profileX = corrected_data[1].ProfileX()
             opt_binContent_values = [] #For storing the bin contents for this histo
