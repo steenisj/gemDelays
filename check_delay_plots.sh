@@ -41,25 +41,25 @@ if [[ "$VERBOSE" -eq 1 ]]; then
     log_verbose "Verbose mode is ON. Outputting the 2d initial data and the individual canvas fits"
     echo
 
-    #for root_file in "$final_root_dir"/finalFitInformation*.root; do
-    #    if [ -f "$root_file" ]; then
-    #        echo "Processing file: $root_file"
-    #        python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
-    #    echo "Processing completed for $root_file"
-    #    fi
-    #done
+    for root_file in "$final_root_dir"/finalFitInformation*.root; do
+        if [ -f "$root_file" ]; then
+            echo "Processing file: $root_file"
+            python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
+        echo "Processing completed for $root_file"
+        fi
+    done
 
-    #echo
+    echo
 
-    #for root_file in "$initial_root_dir"/fitInformation*.root; do
-    #    if [ -f "$root_file" ]; then
-    #        echo "Processing file: $root_file"
-    #	    python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
-    #        echo "Processing completed for $root_file"
-    #    fi
-    #done
+    for root_file in "$initial_root_dir"/fitInformation*.root; do
+        if [ -f "$root_file" ]; then
+            echo "Processing file: $root_file"
+    	    python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
+            echo "Processing completed for $root_file"
+        fi
+    done
 
-    #echo
+    echo
 
     python3 check_2d_distributions.py $delays_dir "$initial_root_dir"/initial_mcdonalds_distributions.pdf
     echo
