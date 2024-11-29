@@ -1,4 +1,4 @@
-#For generating pdfs from the fit MEANS canvases in the output root files
+#For generating pdfs from the 2d distributions of the timing in the data root files
 #Argument 0 is the root_file_path
 #Argument 1 is the output_pdf_path
 #Argument 2 is optional and gives the canvas string to search for within the root file
@@ -13,12 +13,9 @@ import signal
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptFit(1111)
 
-def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformation*.root", hist_string="fit_means_hist", range=None):
-    if not range is None:
-        joined = ''.join(range)
-        cleaned = joined.strip('[]')
-        split_values = cleaned.split(',')
-        range=split_values
+def hists_2d_to_pdf(directory, output_pdf_path, file_string="GE*_delays.root", hist_string=""):
+    # Open the ROOT file
+    #root_file = ROOT.TFile.Open(root_file_path)
 
     # Create a temporary directory to store images
     temp_dir = "./temp_canvas_images"
@@ -33,16 +30,23 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
         root_file = ROOT.TFile.Open(file)
         #canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
         #print(root_file)
-        hist = root_file.Get(hist_string)
+        keys = root_file.GetListOfKeys()
+        
+        key_name_search = file.split("/")[-1].replace("_delays.root","")+hist_string
+        for key in keys:
+            name = key.GetName()
+            if name == key_name_search:
+                data_key = name
+        
+        hist = root_file.Get(data_key)
+        hist.RebinY(120)
         print(hist)
+
         canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
-        if range is None:
-            hist.GetYaxis().SetRangeUser(4,13)
-        else:
-            hist.GetYaxis().SetRangeUser(float(range[0]),float(range[1]))
-        hist.Draw()
+        hist.GetYaxis().SetRangeUser(4,13)
+        hist.Draw("COLZ")
         hist.SetTitle(file.split("/")[-1].replace(".root",""))
-        image_path = os.path.join(temp_dir, f"{hist_string}{i}.png")
+        image_path = os.path.join(temp_dir, f"fit_2d_hist{i}.png")
         image_paths.append(image_path)
         canvas.SaveAs(image_path)
         root_file.Close()
@@ -53,7 +57,7 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
     if images:
         images[0].save(output_pdf_path, save_all=True, append_images=images[1:])
 
-    print("PDF Output: ", output_pdf_path)
+    print("PDF Output", output_pdf_path)
 
     # Clean up temporary images
     for image_path in image_paths:
@@ -81,8 +85,7 @@ signal.signal(signal.SIGTERM, cleanup_and_exit)
 if __name__ == "__main__":
     # Usage
     if len(sys.argv)==3:
-        means_hists_to_pdf(sys.argv[1], sys.argv[2])
-    elif len(sys.argv)==4:
-        means_hists_to_pdf(sys.argv[1], sys.argv[2], file_string=sys.argv[3])   
-    elif len(sys.argv)==6:
-        means_hists_to_pdf(sys.argv[1], sys.argv[2], file_string=sys.argv[3], hist_string=sys.argv[4], range=sys.argv[5])
+        hists_2d_to_pdf(sys.argv[1], sys.argv[2])
+    elif len(sys.argv)==5:
+        hists_2d_to_pdf(sys.argv[1], sys.argv[2], file_string=sys.argv[3], hist_string=sys.argv[4])
+
