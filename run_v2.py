@@ -9,8 +9,9 @@ import glob
 files = glob.glob("./GEM_mcdonalds_data/*M_14_L2.root")
 #files = ["./results/delay_plots/GE11_P_10_L1_data.root"]
 
-for i, input_file_name in enumerate(files):  
-    print("Currently on file: ", input_file_name)  
+for i, input_file_name in enumerate(files): 
+    print("-------------------------------------------------------------------------------------------------------------")
+    print("\n\033[1;32mCurrently on file: \033[0m", input_file_name)
     DR = dataRetriever(input_file_name)
     original_histo = DR.histo
     
@@ -24,8 +25,11 @@ for i, input_file_name in enumerate(files):
     #       the delays needed
 
     DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=9)
+    
     if DG.status == False:
         continue
+
+    #print([DR.histo.GetMaximum(2),DR.histo.GetMean(2),DR.histo.GetStdDev(2),0])
 
     outfile = ROOT.TFile(f"GEM_delays/delays/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
     outfile.cd()
@@ -58,3 +62,8 @@ for i, input_file_name in enumerate(files):
     else:
         DG.group_df.to_csv("GEM_delays/delays/group_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "vfat", "group", "bunchDelay"], index=False, header=False)
         DG.gbt_df.to_csv("GEM_delays/delays/gbt_delays.csv", mode='a', columns=["padID", "fed", "amc", "oh", "gbt", "gbtDelay"], index=False, header=False)
+
+
+print("\n-------------------------------------------------------------------------------------------------------------")
+print("\033[1;35mPROCESS COMPLETED!\033[0m")
+print("-------------------------------------------------------------------------------------------------------------\n")

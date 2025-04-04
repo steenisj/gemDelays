@@ -6,6 +6,7 @@
 import ROOT
 from PIL import Image
 import os
+import shutil
 import sys
 import signal
 
@@ -18,6 +19,8 @@ def canvases_to_pdf(root_file_path, output_pdf_path, canvas_string="fit_canvas")
 
     # Create a temporary directory to store images
     temp_dir = "./temp_canvas_images"
+    if os.path.exists(temp_dir):
+       shutil.rmtree(temp_dir) 
     os.makedirs(temp_dir, exist_ok=True)
 
     # List to store image paths
@@ -73,3 +76,5 @@ if __name__ == "__main__":
         canvases_to_pdf(sys.argv[1], sys.argv[2])
     elif len(sys.argv)==4:
         canvases_to_pdf(sys.argv[1], sys.argv[2], canvas_string=sys.argv[3])
+
+    print("PDF output: ", sys.argv[2])

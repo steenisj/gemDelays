@@ -12,7 +12,7 @@ import statistics
 
 #This is initialized at the chamber level. Every chamber will have to re-initialize this class.
 class delayGenerator():
-    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5):
+    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5, initial_initFit_parameters=[100,6,1,0], final_initFit_parameters=[20,9,1,0]):
         if histo==None or histo_name==None:
             self.status = False
         
@@ -27,16 +27,20 @@ class delayGenerator():
             self.reference_point = reference_point
             self.rebin_num = rebin_num
             self.num_optimize_steps = num_optimize_steps
+            self.initial_initFit_parameters = initial_initFit_parameters
+            self.final_initFit_parameters = final_initFit_parameters
 
             #To rebin the data into groups!
             self.histo = histo.RebinX(self.rebin_num)
             
             #Extracting the data and generating what the "ideal delays" would be
+            print("\033[34m\nGetting data for chamber...\n\033[0m")
             self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
             self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
             self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
             
             #Getting the integer delays for the groups
+            print("\033[34m\nOptimizing standard deviation from reference point...\n\033[0m")
             self.int_df, self.min_reference_point = self.int_optimizer()
             self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
             self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
@@ -51,11 +55,8 @@ class delayGenerator():
 
             #This is just for checking the effect of the delays
             self.final_amplitudes, self.final_means, self.final_sigmas, self.final_backgrounds = self.general.fit_2d_histogram(self.gbt_applied_histo, 
-                                                                                output_file="GEM_delays/verification_plots/final/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root", 
-                                                                                init_params=[20,9,1,0], 
-                                                                                param_limits={0:[0,1000], 1:[4,15], 2:[0,4], 3:[0,1000]}, 
-                                                                                fit_range=[5,13], 
-                                                                                pol0_from_back=14
+                                                                                output_file="GEM_delays/verification_plots/final/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root",
+                                                                                fit_range=[4,12]
                                                                                 )
             
             #final = with all information
@@ -182,7 +183,7 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.histo #self.grouper(self.histo)
-        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", init_params=[20,7,1,0], param_limits={0:[0,1000], 1:[2,13], 2:[0,4], 3:[0,1000]}, fit_range=[3,11], pol0_from_back=12)
+        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", fit_range=[2,10])
         
         #Removing the hot channels based on the first fits
         '''for n in range(1, self.histo.GetNbinsX()+1):
@@ -191,7 +192,7 @@ class delayGenerator():
                    self.histo.SetBinContent(n,m,0)
 
         #Rerunning after removing the hot channels
-        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", init_params=[20,7,1,0], param_limits={0:[0,1000], 1:[2,13], 2:[0,4], 3:[0,1000]}, fit_range=[3,11], pol0_from_back=12)'''
+        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", init_params=self.initial_initFit_parameters, param_limits={0:[0,1000], 1:[4,9], 2:[0,4], 3:[0,1000]}, fit_range=[4,10])'''
 
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
@@ -237,7 +238,7 @@ class delayGenerator():
             all_int_applied_histos[key] = self.applier(all_delays_df_wInt[key]['bunchDelay'], self.histo, hist_string="_intApplied"+str(key).split(".")[-1])
         
         for i, corrected_data in enumerate(all_int_applied_histos.items()):
-            opt_amplitudes_hist, opt_means_hist, opt_sigmas_hist, opt_backgrounds_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"GEM_delays/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", init_params=[20,9,1,0], param_limits={0:[0,1000], 1:[4,15], 2:[0,4], 3:[0,1000]}, fit_range=[5,13], pol0_from_back=14)
+            opt_amplitudes_hist, opt_means_hist, opt_sigmas_hist, opt_backgrounds_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"GEM_delays/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", fit_range=[4,12])
 
             #temp_profileX = corrected_data[1].ProfileX()
             opt_binContent_values = [] #For storing the bin contents for this histo
@@ -258,10 +259,10 @@ class delayGenerator():
                 fit_stdev_values["stDevs"].append(temp_stdev)
                     
         #Now that we have the correct reference_number_offset index, now we can collect the proper delays from the df
-        print(fit_stdev_values)
+        print("Standard deviation values from optimization: ", fit_stdev_values['stDevs'])
         min_index = np.argmin(fit_stdev_values["stDevs"])
         min_offset_key = list(all_delays_df_wInt.keys())[min_index] 
-        print("Minimum stDev Reference Num: " + min_offset_key)    
+        print("Minimum standard deviation reference number: ", (self.reference_point + float(min_offset_key)), "bunch crossings \n")    
         int_optimized_df = all_delays_df_wInt[min_offset_key]
 
         return int_optimized_df, float(min_offset_key)
@@ -322,7 +323,9 @@ class generalFunctions():
     #   1) a histo with the means as a function of x bin
     #   2) a histo with the sigmas as a function of the x bin
     #   3) canvases with all of the individual fits
-    def fit_2d_histogram(self, h2d, output_file=None, init_params=None, param_limits=None, fit_range=None, max_straddle=False, pol0_from_back=False):
+    def fit_2d_histogram(self, input_hist, output_file=None, fit_range=None, max_straddle=False):
+        h2d = input_hist.Clone()
+        h2d.RebinY(120) #Improves the fitting
         ROOT.gROOT.SetBatch(True)
         if (fit_range is not None) and (max_straddle is not False):
             print("Warning, you have selected two different fit methods. The first one will be chosen.")
@@ -355,16 +358,7 @@ class generalFunctions():
 
             fitted_function = ROOT.TF1("fitted_function", "gaus(0)+pol0(3)")
 
-            if init_params is not None: #Making sure init_params is proper
-                if not isinstance(init_params, list):
-                    raise TypeError("init_params is not a list")
-                elif len(init_params) != 4:
-                    raise ValueError("init_params is the incorrect length, 4")
-                else:
-                    fitted_function.SetParameters(init_params[0], init_params[1], init_params[2])
-
-            if pol0_from_back != False:
-                fitted_function.SetParameter(0, h1d.GetBinContent(h1d.GetBin(pol0_from_back)))
+            fitted_function.SetParameters(h1d.GetMaximum(), h1d.GetMean(), 0.5)
 
             if fit_range is not None:
                 fit_min, fit_max = fit_range
@@ -376,16 +370,12 @@ class generalFunctions():
             else:
                 fit_option = "Q"
 
-            if param_limits is not None: #Making sure param_limits is proper
-                if not isinstance(param_limits, dict):
-                    raise TypeError("param_limits should be a dict of the form {0: [param_max0, param_min0], 1: ..., ...}")
-                else:
-                    for key in param_limits.keys():
-                        fitted_function.SetParLimits(int(key), param_limits[key][0], param_limits[key][1])
-
-
+            fitted_function.SetParLimits(0, h1d.GetMaximum()*0.8, h1d.GetMaximum()*1.2)
+            fitted_function.SetParLimits(1, h1d.GetMean()*0.3, h1d.GetMean()*1.7)
+            fitted_function.SetParLimits(2, 0.1, 4)
+            fitted_function.SetParLimits(3, 0, 100)
+            
             h1d.Fit("fitted_function", fit_option)
-
             if fitted_function.GetParameter(2) < 0:
                 print("Bin ", binx, " has a negative sigma. We will take the absolute value!")
 
@@ -397,7 +387,7 @@ class generalFunctions():
             h1d.Draw()
             fitted_function.Draw("same")
             canvas.Update()
-
+            
             if outfile is not None:
                 canvas.Write(f"fit_canvas_bin_{binx}")
 
@@ -410,7 +400,7 @@ class generalFunctions():
             fit_means_hist.SetDirectory(0)
             fit_sigmas_hist.SetDirectory(0)
             fit_backgrounds_hist.SetDirectory(0)
-            print("Output made!")
+            print(f"Output {outfile.GetName()} made!")
             outfile.Close()
 
         return fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist

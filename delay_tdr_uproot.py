@@ -75,7 +75,7 @@ for station in stations:
                 #file_path = f"results/delay_plots/GE{station}1_{region_label}_{chamber}_L{layer}_data.root"
                 hist_name = f"GE{station}1_{region_label}_{chamber}_L{layer}"
 
-                temp_hist = ROOT.TH2D(hist_name, hist_name, int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666, 24-0.004166666666666666)
+                temp_hist = ROOT.TH2D(hist_name, hist_name, int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666-0.5, 24-0.004166666666666666-0.5)
                 temp_hist.GetXaxis().SetTitle("Expanded Pad ID")
                 temp_hist.GetYaxis().SetTitle("Bunch Crossing [Giovanni Eqn Applied]")
                 temp_hist.SetDirectory(0)
