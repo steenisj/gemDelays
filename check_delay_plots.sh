@@ -78,4 +78,4 @@ echo
 python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_backgrounds_initial.pdf "fitInformation*.root" "fit_backgrounds_hist" [0,500]
 echo
 
-echo "Processing all ROOT files in $root_dir completed."
+#echo "Processing all ROOT files in $root_dir completed."
