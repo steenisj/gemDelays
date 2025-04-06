@@ -9,6 +9,7 @@ import os
 import sys
 import glob
 import signal
+import shutil 
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptFit(1111)
@@ -22,6 +23,8 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
 
     # Create a temporary directory to store images
     temp_dir = "./temp_canvas_images"
+    if os.path.exists(temp_dir):
+       shutil.rmtree(temp_dir)
     os.makedirs(temp_dir, exist_ok=True)
 
     # List to store image paths

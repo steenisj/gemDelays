@@ -9,6 +9,7 @@ import os
 import sys
 import glob
 import signal
+import shutil
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptFit(1111)
@@ -19,6 +20,8 @@ def hists_2d_to_pdf(directory, output_pdf_path, file_string="GE*_delays.root", h
 
     # Create a temporary directory to store images
     temp_dir = "./temp_canvas_images"
+    if os.path.exists(temp_dir):
+       shutil.rmtree(temp_dir)
     os.makedirs(temp_dir, exist_ok=True)
 
     # List to store image paths
@@ -31,7 +34,8 @@ def hists_2d_to_pdf(directory, output_pdf_path, file_string="GE*_delays.root", h
         #canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
         #print(root_file)
         keys = root_file.GetListOfKeys()
-        
+        if len(keys)==0:
+            continue
         key_name_search = file.split("/")[-1].replace("_delays.root","")+hist_string
         for key in keys:
             name = key.GetName()
