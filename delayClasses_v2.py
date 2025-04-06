@@ -12,7 +12,7 @@ import statistics
 
 #This is initialized at the chamber level. Every chamber will have to re-initialize this class.
 class delayGenerator():
-    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5, initial_initFit_parameters=[100,6,1,0], final_initFit_parameters=[20,9,1,0]):
+    def __init__(self, histo, histo_name, filename, reference_point=10, rebin_num=8, num_optimize_steps=5):
         if histo==None or histo_name==None:
             self.status = False
         
@@ -27,8 +27,6 @@ class delayGenerator():
             self.reference_point = reference_point
             self.rebin_num = rebin_num
             self.num_optimize_steps = num_optimize_steps
-            self.initial_initFit_parameters = initial_initFit_parameters
-            self.final_initFit_parameters = final_initFit_parameters
 
             #To rebin the data into groups!
             self.histo = histo.RebinX(self.rebin_num)
@@ -36,13 +34,14 @@ class delayGenerator():
             #Extracting the data and generating what the "ideal delays" would be
             print("\033[34m\nGetting data for chamber...\n\033[0m")
             self.station, self.region, self.layer, self.chamber = self.gemPad_stringExtractor()
-            self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists = self.data_generator()            
-            self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.histo, hist_string="_floatCorrectionApplied")
+            self.all_df_float, self.expanded_differences_0, self.means_df, self.all_expanded_difference_hists, self.postHot_histo = self.data_generator()            
+            self.postHot_histo.SetName(self.postHot_histo.GetName()+"_postHotRemoval")
+            self.float_applied_histo = self.applier(self.all_df_float["0.0"]["idealDelay"], self.postHot_histo, hist_string="_floatCorrectionApplied")
             
             #Getting the integer delays for the groups
             print("\033[34m\nOptimizing standard deviation from reference point...\n\033[0m")
             self.int_df, self.min_reference_point = self.int_optimizer()
-            self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
+            self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.postHot_histo, hist_string="_intCorrectionApplied")
             self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
             
             #Adding in the gbt delays
@@ -183,27 +182,27 @@ class delayGenerator():
         all_expanded_difference_hists = {}
         all_delay_df = {}
         rebinned_hist = self.histo #self.grouper(self.histo)
-        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", fit_range=[2,10])
-        
+        preHot_fit_amplitudes_hist, preHot_fit_means_hist, preHot_fit_sigmas_hist, preHot_fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/preHot_fitInformation_"+self.histo_name+".root", fit_range=[2,10])
+       
+        postHot_rebinned_hist = rebinned_hist.Clone()
+
         #Removing the hot channels based on the first fits
-        '''for n in range(1, self.histo.GetNbinsX()+1):
-            if fit_sigmas_hist.GetBinContent(n) >= 3:
-               for m in range(1, self.histo.GetNbinsY()+1):
-                   self.histo.SetBinContent(n,m,0)
+        for n in range(1, postHot_rebinned_hist.GetNbinsX()+1):
+            if preHot_fit_sigmas_hist.GetBinContent(n) >= 1.5 or preHot_fit_backgrounds_hist.GetBinContent(n) >= 5:
+                for m in range(1, postHot_rebinned_hist.GetNbinsY()+1):
+                    postHot_rebinned_hist.SetBinContent(n,m,0)
 
         #Rerunning after removing the hot channels
-        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(rebinned_hist, output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", init_params=self.initial_initFit_parameters, param_limits={0:[0,1000], 1:[4,9], 2:[0,4], 3:[0,1000]}, fit_range=[4,10])'''
+        fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = self.general.fit_2d_histogram(postHot_rebinned_hist, output_file="GEM_delays/verification_plots/initial/postHot_fitInformation_"+self.histo_name+".root", fit_range=[2,10])
 
         #Cycle through a range of reference points between self.reference_point and self.reference_point+1 to choose whichever removes the bias best        
         for i in np.linspace(0.0, 1.0, self.num_optimize_steps+1)[0:-1]:
             difference_hist = self.general.compute_difference_histogram(fit_means_hist, self.reference_point+i, hist_name_str="_"+str(i))
-            #expanded_difference_hist = self.expander(difference_hist)
-            expanded_difference_hist = difference_hist
-            all_expanded_difference_hists[i] = expanded_difference_hist
-            all_delay_df[str(i)] = self.general.histogram_to_df(expanded_difference_hist, "padID", "idealDelay")
+            all_expanded_difference_hists[i] = difference_hist
+            all_delay_df[str(i)] = self.general.histogram_to_df(difference_hist, "padID", "idealDelay")
             self.apply_info_to_df(all_delay_df[str(i)])          
                     
-        return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists
+        return all_delay_df, all_expanded_difference_hists[0], self.general.histogram_to_df(fit_means_hist, "padID", "mean"), all_expanded_difference_hists, postHot_rebinned_hist
             
     def applier(self, correction_df, histo, hist_string=""):
         applied_histo = ROOT.TH2D(histo.GetName()+hist_string, histo.GetName()+hist_string, histo.GetNbinsX(), histo.GetXaxis().GetXmin(), histo.GetXaxis().GetXmax(), histo.GetNbinsY(), histo.GetYaxis().GetXmin(), histo.GetYaxis().GetXmax())
@@ -240,19 +239,14 @@ class delayGenerator():
         for i, corrected_data in enumerate(all_int_applied_histos.items()):
             opt_amplitudes_hist, opt_means_hist, opt_sigmas_hist, opt_backgrounds_hist = self.general.fit_2d_histogram(corrected_data[1], output_file=f"GEM_delays/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", fit_range=[4,12])
 
-            #temp_profileX = corrected_data[1].ProfileX()
             opt_binContent_values = [] #For storing the bin contents for this histo
             temp_hist = ROOT.TH1D(f"tempHist{i}",f"tempHist{i}",50,7,12)
             for j in range(1, opt_means_hist.GetNbinsX()+1):
-            #for j in range(0, 1536):
                 content = opt_means_hist.GetBinContent(j)
-                #opt_binContent_values.append(content)
                 if content:
                     temp_hist.Fill(content)
             
             temp_stdev = temp_hist.GetStdDev()
-            '''temp_stdev = statistics.stdev(opt_binContent_values, ddof=0)
-            print(opt_binContent_values) '''
             if "stDevs" not in list(fit_stdev_values.keys()):
                 fit_stdev_values["stDevs"] = [temp_stdev]
             else:

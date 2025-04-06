@@ -67,15 +67,15 @@ if [[ "$VERBOSE" -eq 1 ]]; then
     echo
 fi
 
-python3 check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf 
+python3 check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf "postHot_fitInformation*.root" 
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_means_initial.pdf "fitInformation*.root"
+python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_means_initial.pdf "postHot_fitInformation*.root"
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_sigmas_initial.pdf "fitInformation*.root" "fit_sigmas_hist" [0,10] 
+python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_sigmas_initial.pdf "postHot_fitInformation*.root" "fit_sigmas_hist" [0,10] 
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_amplitudes_initial.pdf "fitInformation*.root" "fit_amplitudes_hist" [0,500]
+python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_amplitudes_initial.pdf "postHot_fitInformation*.root" "fit_amplitudes_hist" [0,500]
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_backgrounds_initial.pdf "fitInformation*.root" "fit_backgrounds_hist" [0,500]
+python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_backgrounds_initial.pdf "postHot_fitInformation*.root" "fit_backgrounds_hist" [0,500]
 echo
 
 #echo "Processing all ROOT files in $root_dir completed."

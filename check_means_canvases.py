@@ -34,8 +34,7 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
     #for i, file in enumerate(os.listdir(directory+"/"+file_string)): 
     for i, file in enumerate(glob.glob(directory+"/"+file_string)):
         root_file = ROOT.TFile.Open(file)
-        #canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
-        #print(root_file)
+        
         hist = root_file.Get(hist_string)
         print(hist)
         canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)

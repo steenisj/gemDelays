@@ -32,26 +32,15 @@ for i, input_file_name in enumerate(files):
     #print([DR.histo.GetMaximum(2),DR.histo.GetMean(2),DR.histo.GetStdDev(2),0])
 
     outfile = ROOT.TFile(f"GEM_delays/delays/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
-    outfile.cd()
-    original_histo.Write()
-    original_histo.ProfileX().Write(original_histo.GetName()+"_profileX")
-    
-    outfile.cd()
-    float_applied_histo = DG.float_applied_histo
-    int_applied_histo = DG.int_applied_histo
-    int_differences = DG.int_differences
-    gbt_applied_histo = DG.gbt_applied_histo
-    gbt_differences = DG.gbt_differences
-    
-    float_applied_histo.Write()
-    float_applied_histo.ProfileX().Write(float_applied_histo.GetName()+"_profileX")
-    int_applied_histo.Write()
-    int_applied_histo.ProfileX().Write(int_applied_histo.GetName()+"_profileX")
-    int_differences.Write("integer_differences")
-    gbt_applied_histo.Write()
-    gbt_applied_histo.ProfileX().Write(gbt_applied_histo.GetName()+"_profileX")
-    gbt_differences.Write("gbt_differences")
-        
+    DG.histo.Write()
+    DG.postHot_histo.Write()
+    DG.float_applied_histo.Write()
+    DG.int_applied_histo.Write()
+    DG.gbt_applied_histo.Write()
+
+    DG.int_differences.Write("integer_differences")
+    DG.gbt_differences.Write("gbt_differences")
+
     outfile.Close()
     
     #DG.int_df.to_csv("results/delays.csv")
