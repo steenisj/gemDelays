@@ -67,7 +67,7 @@ if [[ "$VERBOSE" -eq 1 ]]; then
     echo
 fi
 
-python3 check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf "postHot_fitInformation*.root" 
+python3 check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf "finalFitInformation*.root" 
 echo
 python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_means_initial.pdf "postHot_fitInformation*.root"
 echo

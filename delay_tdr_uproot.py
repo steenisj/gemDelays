@@ -77,7 +77,8 @@ for station in stations:
 
                 temp_hist = ROOT.TH2D(hist_name, hist_name, int(1536), -0.5, 1535.5, 24*120, 0-0.004166666666666666-0.5, 24-0.004166666666666666-0.5)
                 temp_hist.GetXaxis().SetTitle("Expanded Pad ID")
-                temp_hist.GetYaxis().SetTitle("Bunch Crossing [Giovanni Eqn Applied]")
+                #temp_hist.GetYaxis().SetTitle("Bunch Crossing [Giovanni Eqn Applied]")
+                temp_hist.GetYaxis().SetTitle("Time [bx]")
                 temp_hist.SetDirectory(0)
 
                 chamber_hists[hist_name] = {"station": station, "region_label": region_label, "chamber": chamber, "layer": layer, "data": temp_hist} 

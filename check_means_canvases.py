@@ -37,7 +37,7 @@ def means_hists_to_pdf(directory, output_pdf_path, file_string="finalFitInformat
         
         hist = root_file.Get(hist_string)
         print(hist)
-        canvas = ROOT.TCanvas("canvas", "My Canvas", 800, 600)
+        canvas = ROOT.TCanvas(f"{file.replace('.root','')}_canvas", "My Canvas", 800, 600)
         if range is None:
             hist.GetYaxis().SetRangeUser(4,13)
         else:
