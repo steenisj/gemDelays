@@ -40,7 +40,7 @@ class delayGenerator():
             
             #Getting the integer delays for the groups
             print("\033[34m\nOptimizing standard deviation from reference point...\n\033[0m")
-            self.int_df = self.int_optimizer()
+            self.int_df, self.min_reference_point = self.int_optimizer()
             self.int_applied_histo = self.applier(self.int_df["bunchDelay"], self.histo, hist_string="_intCorrectionApplied")
             self.int_differences = self.df_to_hist(self.int_df["bunchDelay"], self.int_df["padID"], histo_string="_intDifferences")
             
@@ -258,7 +258,7 @@ class delayGenerator():
 
         #overall_adjustment = float(fit_stdev_values["means"][0]) - self.reference_point
 
-        return int_optimized_df #, overall_adjustment
+        return int_optimized_df, float(min_offset_key) #, overall_adjustment
     
     def df_to_hist(self, correction_df, pad_df, histo_string=""):
         differences = ROOT.TH1D(self.histo.GetName()+histo_string, self.histo.GetName()+histo_string, self.histo.GetNbinsX(), self.histo.GetXaxis().GetXmin(), self.histo.GetXaxis().GetXmax())
@@ -318,7 +318,7 @@ class generalFunctions():
     #   3) canvases with all of the individual fits
     def fit_2d_histogram(self, input_hist, output_file=None, fit_range=None, max_straddle=False):
         h2d = input_hist.Clone()
-        h2d.RebinY(120) #Improves the fitting
+        #h2d.RebinY(120) #Improves the fitting
         ROOT.gROOT.SetBatch(True)
         if (fit_range is not None) and (max_straddle is not False):
             print("Warning, you have selected two different fit methods. The first one will be chosen.")
@@ -372,7 +372,7 @@ class generalFunctions():
             if fitted_function.GetParameter(2) < 0:
                 print("Bin ", binx, " has a negative sigma. We will take the absolute value!")
             
-            means.append(fitted_function.GetParameter(1))
+            #means.append(fitted_function.GetParameter(1))
 
             fit_amplitudes_hist.SetBinContent(binx, fitted_function.GetParameter(0))
             fit_means_hist.SetBinContent(binx, fitted_function.GetParameter(1))

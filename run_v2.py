@@ -33,7 +33,7 @@ for i, input_file_name in enumerate(files):
 
     outfile = ROOT.TFile(f"GEM_delays/delays/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
     DG.histo.Write()
-    DG.postHot_histo.Write()
+    #DG.postHot_histo.Write()
     DG.float_applied_histo.Write()
     DG.int_applied_histo.Write()
     DG.gbt_applied_histo.Write()
