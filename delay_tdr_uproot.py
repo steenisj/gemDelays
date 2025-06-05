@@ -86,7 +86,7 @@ for station in stations:
 
 # Loop over chunks of data using uproot.iterate
 counter = 0
-counter_limit = None #10000
+counter_limit = None #None if you want to run everything
 for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):     
     if counter_limit!=None:
         if counter>counter_limit:
@@ -174,6 +174,26 @@ for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):
                     if n_events>0:
                         name = f"GE{station}1_{region_label}_{chamber}_L{layer}"
                         chamber_hists[name]['data'].FillN(n_events, array('d', x_data), array('d', y_data), array('d', weights))
+
+
+print("REMOVING HOT CHANNELS")
+for chamber in chamber_hists.keys():
+    for i in range(chamber_hists[chamber]['data'].GetNbinsX()):
+        high_bool = False
+        low_bool = False
+        override_bool = False
+        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(13)) >= 1) or (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(12)) >= 1):
+            high_bool = True
+        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(2)) >= 1) or (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(3)) >= 1):
+            low_bool = True
+        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(13)) > 2) and (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(12)) > 2) and (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(11)) > 2):
+            override_bool = True
+
+        if (high_bool and low_bool) or override_bool:
+            print(f"THROWING AWAY chamber {chamber}, padID{i} SINCE IT'S HOT!")
+            for j in range(chamber_hists[chamber]['data'].GetNbinsY()):
+                chamber_hists[chamber]['data'].SetBinContent(i, j, 0)
+                chamber_hists[chamber]['data'].SetBinError(i, j, 0)
 
 
 for chamber in chamber_hists.keys():
