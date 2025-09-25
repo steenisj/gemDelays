@@ -6,7 +6,7 @@ import glob
 
 #files = ["/afs/cern.ch/user/j/jsteenis/public/GEMS/EfficiencyAnalyzer/results/delay_plots/gemPad_st1_Rneg1L2CH7_hist_chamberSeparated_fineYbinning.root"]
 files = glob.glob("./GEM_mcdonalds_data/*.root")
-#files = glob.glob("./GEM_mcdonalds_data/*M_14_L2.root")
+#files = glob.glob("./GEM_mcdonalds_data/*M_5_L1.root")
 #files = ["./results/delay_plots/GE11_P_10_L1_data.root"]
 
 for i, input_file_name in enumerate(files): 
