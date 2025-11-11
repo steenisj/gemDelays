@@ -39,7 +39,9 @@ def shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindo
     gemBX = gemPadDigiCluster_PadBX + CSCConstants_LCT_CENTRAL_BX - int(tmbL1aWindowSize/2.0) - gemPadDigiCluster_ClusterALCTMatchTime 
     return gemBX
 
-filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/385620")
+#filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/395982") #Low stats, no hot channels
+#filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/395987") #No hot channels
+filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/398600")
 #filelist = find_root_files("/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/38562")
 tree_name = "muNtupleProducer/MuDPGTree"
 filelist = [x+":"+tree_name for x in filelist]
@@ -182,24 +184,42 @@ print("REMOVING HOT CHANNELS")
 for chamber in chamber_hists.keys():
     for i in range(chamber_hists[chamber]['data'].GetNbinsX()):
         threshold = 0
-        for j in range(chamber_hists[chamber]['data'].GetNbinsY()):
+        '''for j in range(chamber_hists[chamber]['data'].GetNbinsY()):
             value = chamber_hists[chamber]['data'].GetBinContent(i,j)
             if value>threshold:
                 threshold = value
         if threshold>10:
             threshold = 0.3*threshold
         else:
-            threshold = 10e9
+            threshold = 10e9'''
 
+        '''prof_x = chamber_hists[chamber]['data'].ProfileX()
+
+        nbins = prof_x.GetNbinsX()
+        total = sum(prof_x.GetBinContent(i) for i in range(1, nbins+1))
+        mean_profile_content = total / nbins if nbins > 0 else 0
+
+        if mean_profile_content > 50:
+            threshold = 0.3*mean_profile_content
+        else:
+            threshold = 1e9
 
         high_bool = False
         low_bool = False
         override_bool = False
-        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(13)) >= threshold) or (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(12)) >= threshold):
+
+        bin2_content = chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(2))
+        bin3_content = chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(3))
+
+        bin11_content = chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(11))
+        bin12_content = chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(12))
+        bin13_content = chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(13))
+
+        if (bin13_content >= threshold) or (bin12_content >= threshold):
             high_bool = True
-        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(2)) >= threshold) or (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(3)) >= threshold):
+        if (bin2_content >= threshold) or (bin3_content >= threshold):
             low_bool = True
-        if (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(13)) > 2*threshold) and (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(12)) > 2*threshold) and (chamber_hists[chamber]['data'].GetBinContent(i, chamber_hists[chamber]['data'].GetYaxis().FindBin(11)) > 2*threshold):
+        if (bin13_content > 2*threshold) and (bin12_content > 2*threshold) and (bin11_content > 2*threshold):
             override_bool = True
 
         if (high_bool and low_bool) or override_bool:
@@ -211,7 +231,7 @@ for chamber in chamber_hists.keys():
                 chamber_hists[chamber]['data'].SetBinContent(i, j, 0)
                 chamber_hists[chamber]['data'].SetBinError(i, j, 0)
             hot_output.cd()
-            temp_hist.Write()
+            temp_hist.Write()'''
 
 # Noisy pad filter
 '''for chamber in chamber_hists.keys(): 

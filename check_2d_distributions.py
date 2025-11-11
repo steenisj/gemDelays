@@ -36,7 +36,12 @@ def hists_2d_to_pdf(directory, output_pdf_path, file_string="GE*_delays.root", h
         keys = root_file.GetListOfKeys()
         if len(keys)==0:
             continue
-        key_name_search = file.split("/")[-1].replace("_delays.root","")+hist_string
+
+        if file_string!="GE*_delays.root":
+            key_name_search = file.split("/")[-1].replace(".root","")+hist_string
+        else:
+            key_name_search = file.split("/")[-1].replace("_delays.root","")+hist_string
+
         for key in keys:
             name = key.GetName()
             if name == key_name_search:
