@@ -21,7 +21,7 @@ class delayGenerator():
             
             #Getting parameters
             self.general = generalFunctions()
-            self.histo = histo #Input histo
+            self.histo = self.hotPadRemover(histo) #Input histo
             self.histo_name = histo_name #Input histo name
             self.filename = filename
             self.reference_point = reference_point
@@ -335,7 +335,40 @@ class delayGenerator():
     def df_reducer_gbt(self, df):
         temp_df = df.copy()
         return temp_df.drop_duplicates(subset=['fed', 'amc', 'oh', 'gbt'])
-        
+
+    def hotPadRemover(self, hist):
+        for bx in range(1, hist.GetNbinsX()+1):
+            i_max_content = None
+            max_content = 1
+            total_X_content = sum(hist.GetBinContent(bx, by) for by in range(1, hist.GetNbinsY() + 1))
+           
+            if total_X_content < 30:
+                continue
+
+            for by in range(1, hist.GetNbinsY()+1):
+                if hist.GetBinContent(bx, by) > max_content:
+                    max_content = hist.GetBinContent(bx, by)
+                    i_max_content = by
+
+            check_chans = [ch for ch in range(1, 16) if abs(ch - int(i_max_content/120)-1) > 2]
+
+            if bx<1400 and bx>1380:
+                hist.RebinY(120)
+                print(max_content)
+                for by in range(1, hist.GetNbinsY()+1):
+                    print("BY: ", by, "COUNTS: ", hist.GetBinContent(bx, by))
+                
+                print(check_chans)
+                #break
+
+            for i in check_chans:
+                if abs(max_content-hist.GetBinContent(bx, hist.GetYaxis().FindBin(i-1)))/max_content < 0.5:
+                    print(f"THROWING AWAY padID {bx} SINCE IT'S HOT!")
+                    for by in range(hist.GetNbinsY()):
+                        hist.SetBinContent(bx, by, 0)
+                        hist.SetBinError(bx, by, 0)
+        return hist
+
 #General functions used in the processing
 class generalFunctions():
     def __init__(self):
@@ -489,8 +522,6 @@ class generalFunctions():
 
         df = pd.DataFrame(data, columns=[x_label, y_label])
         return df
-
-
 
 #For pulling the data to be processed
 class dataRetriever():
