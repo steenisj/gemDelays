@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
         -v|--verbose)
             VERBOSE=1
             ;;
-	--check-initial)
+	--check_initial)
 	    CHECK_INITIAL_ONLY=1
 	    ;;
         *)

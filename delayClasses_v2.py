@@ -349,20 +349,31 @@ class delayGenerator():
                 if hist.GetBinContent(bx, by) > max_content:
                     max_content = hist.GetBinContent(bx, by)
                     i_max_content = by
+            
+            if i_max_content is None:
+                continue
 
-            check_chans = [ch for ch in range(1, 16) if abs(ch - int(i_max_content/120)-1) > 2]
 
-            if bx<1400 and bx>1380:
+            all_bxs = range(1, 16)
+            all_bxs_counts = [hist.GetBinContent(bx, hist.GetYaxis().FindBin(check-1)) for check in all_bxs]
+
+            check_bxs = [ch for ch in all_bxs if abs(ch - int(i_max_content/120)-1) > 1]
+            #bx_counts = [hist.GetBinContent(bx, hist.GetYaxis().FindBin(check-1)) for check in check_chans]
+
+            count_nonzero = sum(v != 0 for v in all_bxs_counts)
+
+            '''if bx==505:
                 hist.RebinY(120)
                 print(max_content)
                 for by in range(1, hist.GetNbinsY()+1):
                     print("BY: ", by, "COUNTS: ", hist.GetBinContent(bx, by))
                 
-                print(check_chans)
-                #break
+                print(check_bxs)
+                break'''
 
-            for i in check_chans:
-                if abs(max_content-hist.GetBinContent(bx, hist.GetYaxis().FindBin(i-1)))/max_content < 0.5:
+            for i in check_bxs:
+                count = hist.GetBinContent(bx, hist.GetYaxis().FindBin(i-1))
+                if abs(max_content-count)/max_content < 0.5 and count_nonzero > 8:
                     print(f"THROWING AWAY padID {bx} SINCE IT'S HOT!")
                     for by in range(hist.GetNbinsY()):
                         hist.SetBinContent(bx, by, 0)

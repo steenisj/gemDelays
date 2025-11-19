@@ -4,10 +4,10 @@
 from delayClasses_v2 import *
 import glob
 
-#files = glob.glob("./GEM_mcdonalds_data/*.root")
+files = glob.glob("./GEM_mcdonalds_data/*.root")
 #files = glob.glob("./GEM_mcdonalds_data/GE11_M_26_L2.root")
 #files = glob.glob("./GEM_mcdonalds_data/GE11_P_34_L1.root")
-files = glob.glob("./GEM_mcdonalds_data/GE11_M_15_L1.root")
+#files = glob.glob("./GEM_mcdonalds_data/GE11_M_15_L1.root")
 
 for i, input_file_name in enumerate(files): 
     print("-------------------------------------------------------------------------------------------------------------")
