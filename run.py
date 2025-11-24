@@ -1,7 +1,7 @@
 #This script runs the delay generation.
 #To look under the hood of the classes, look at the delayClasses script
 #Code by Jacob Steenis, 2024/2025
-from delayClasses_v2 import *
+from delayClasses import *
 import glob
 import argparse
 from setup import ensure_folders_exist
@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 ]
 
     if args.run is not None:
-        ensure_folders_exist(f"GEM_delays/{args.run}", subfolders)
+        ensure_folders_exist(f"GEM_delays/run{args.run}", subfolders)
         files = glob.glob(f"./GEM_mcdonalds_data/run{args.run}/*.root") #pull all files in the GEM_mcdonalds file for a specific run
 
     else:
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         # reference_point is the actual number you subtract the mean timing (per padID) to get estimates for
         #       the delays needed
 
-        DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=7)
+        DG = delayGenerator(DR.histo, DR.histo_name, input_file_name, rebin_num=8, num_optimize_steps=5, reference_point=7, SPECIFY_RUN=args.run)
     
         if DG.status == False:
             continue

@@ -19,7 +19,7 @@ class delayGenerator():
         else:
             self.status = True
 
-            if SPECIFY_RUN != False:
+            if SPECIFY_RUN != False and SPECIFY_RUN is not None:
                 if not isinstance(SPECIFY_RUN,int):
                     print("THE RUN YOU SPECIFY SHOULD BE AN INT!")
                     exit()

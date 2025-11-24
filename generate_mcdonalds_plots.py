@@ -44,11 +44,12 @@ def shiftingBX(gemPadDigiCluster_PadBX, CSCConstants_LCT_CENTRAL_BX, tmbL1aWindo
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--run', type=int, default=None, help='Process a single run number')
+    parser.add_argument('-l', '--limit', type=int, default=None, help='Limit the number of uproot iterations')
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
-    args = parse
+    args = parse_args()
     pathName = "/eos/cms/store/group/dpg_gem/comm_gem/P5_Commissioning/cms-gem-automation/prod/prompt-v1/GEMCommonNTuples/"
 
     if args.run is not None:
@@ -147,7 +148,7 @@ if __name__ == '__main__':
 
     # Loop over chunks of data using uproot.iterate
     counter = 0
-    counter_limit = None #None if you want to run everything
+    counter_limit = args.limit #None if you want to run everything
     for data in uproot.iterate(filelist, variables, library='ak', step_size=100000):     
         if counter_limit!=None:
             if counter>counter_limit:
