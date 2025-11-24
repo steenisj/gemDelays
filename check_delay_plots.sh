@@ -57,7 +57,7 @@ mcdonalds_dir="$current_dir/GEM_mcdonalds_data/${RUN_SUBFOLDER}"
 if [[ "$CHECK_INITIAL_ONLY" -eq 1 ]]; then
     echo
     echo "Running only initial 2D distribution check..."
-    python3 check_2d_distributions.py "$mcdonalds_dir" "$mcdonalds_dir"/initial_mcdonalds_distributions.pdf "GE*.root" ""
+    python3 checking_scripts/check_2d_distributions.py "$mcdonalds_dir" "$mcdonalds_dir"/initial_mcdonalds_distributions.pdf "GE*.root" ""
     echo
     return 0
 fi
@@ -71,7 +71,7 @@ if [[ "$VERBOSE" -eq 1 ]]; then
     for root_file in "$final_root_dir"/finalFitInformation*.root; do
         if [ -f "$root_file" ]; then
             echo "Processing file: $root_file"
-            python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
+            python3 checking_scripts/check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
         echo "Processing completed for $root_file"
         fi
     done
@@ -81,28 +81,28 @@ if [[ "$VERBOSE" -eq 1 ]]; then
     for root_file in "$initial_root_dir"/fitInformation*.root; do
         if [ -f "$root_file" ]; then
             echo "Processing file: $root_file"
-    	    python3 check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
+    	    python3 checking_scripts/check_canvases.py ${root_file} ${root_file/.root/_check.pdf} 
             echo "Processing completed for $root_file"
         fi
     done
 
     echo
 
-    python3 check_2d_distributions.py $delays_dir "$initial_root_dir"/initial_mcdonalds_distributions.pdf
+    python3 checking_scripts/check_2d_distributions.py $delays_dir "$initial_root_dir"/initial_mcdonalds_distributions.pdf
     echo
-    python3 check_2d_distributions.py $delays_dir "$final_root_dir"/final_mcdonalds_distributions.pdf "GE*_delays.root" "_intCorrectionApplied_gbtCorrectionApplied"
+    python3 checking_scripts/check_2d_distributions.py $delays_dir "$final_root_dir"/final_mcdonalds_distributions.pdf "GE*_delays.root" "_intCorrectionApplied_gbtCorrectionApplied"
     echo
 fi
 
-python3 check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf "finalFitInformation*.root" 
+python3 checking_scripts/check_means_canvases.py $final_root_dir "$final_root_dir"/check_means_final.pdf "finalFitInformation*.root" 
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_means_initial.pdf "fitInformation*.root"
+python3 checking_scripts/check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_means_initial.pdf "fitInformation*.root"
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_sigmas_initial.pdf "fitInformation*.root" "fit_sigmas_hist" [0,10] 
+python3 checking_scripts/check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_sigmas_initial.pdf "fitInformation*.root" "fit_sigmas_hist" [0,10] 
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_amplitudes_initial.pdf "fitInformation*.root" "fit_amplitudes_hist" [0,500]
+python3 checking_scripts/check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_amplitudes_initial.pdf "fitInformation*.root" "fit_amplitudes_hist" [0,500]
 echo
-python3 check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_backgrounds_initial.pdf "fitInformation*.root" "fit_backgrounds_hist" [0,500]
+python3 checking_scripts/check_means_canvases.py $initial_root_dir "$initial_root_dir"/check_backgrounds_initial.pdf "fitInformation*.root" "fit_backgrounds_hist" [0,500]
 echo
 
 #echo "Processing all ROOT files in $root_dir completed."
