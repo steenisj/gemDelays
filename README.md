@@ -5,8 +5,8 @@ For the group-level (integer BX) delays, the approach is to choose a reference n
 Now, this leads to the center of the distribution being offset by some n*0.2 amount. To fix this, we use the gbt delays (which pull the timing in the opposite direction) to offset this amount, centering the mean-timing distributions back to the original reference number --- in this example 7.
 
 This process is run in two parts:
-1) Execute ```python3 generate_mcdonalds_plots.py -r [run number] -l [optional data limit: (n+1)*100,000 events within run]``` to generate the "McDonalds" 2d plots of padID vs bx. The outputs will be generated in a folder called GEM_mcdonalds_data.
-2) Execute ```python3 run.py -r [run number]``` to generate text (and root) outputs for the delays. The outputs will be in a newly generated folder called GEM_delays.
+1) Execute: <br><br>```python3 generate_mcdonalds_plots.py -r [run number] -l [optional data limit: (n+1)*100,000 events within run]```<br><br> to generate the "McDonalds" 2d plots of padID vs bx. The outputs will be generated in a folder called GEM_mcdonalds_data.<br>
+2) Execute: <br><br>```python3 run.py -r [run number]```<br><br> to generate text (and root) outputs for the delays. The outputs will be in a newly generated folder called GEM_delays.
 
 Summary of outputs:
 1) For the first part of the processing, files appear in the run[run number] folder within GEM_mcdonalds_data directory. The files look like, for example, GE11_P_9_L2.root. The only object within is a TH2D named, for example, GE11_P_9_L2. This is the McDonalds plot for chamber GE11_P_9_L2.
