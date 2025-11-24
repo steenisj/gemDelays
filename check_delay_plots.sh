@@ -3,6 +3,7 @@
 # Initialize verbose mode to off
 VERBOSE=0
 CHECK_INITIAL_ONLY=0
+RUN_NUMBER=-1
 
 # Function to print messages only in verbose mode
 log_verbose() {
@@ -20,6 +21,16 @@ while [[ $# -gt 0 ]]; do
 	--check_initial)
 	    CHECK_INITIAL_ONLY=1
 	    ;;
+	-r|--run)
+            if [[ -n "$2" && ! "$2" =~ ^- ]]; then
+                RUN_NUMBER="$2"
+                shift
+            else
+                echo "Error: --run requires a numeric argument."
+                return 1
+            fi
+            ;;
+
         *)
             echo "Unknown option: $1"
             return 1
@@ -29,16 +40,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 current_dir=$(pwd 2>/dev/null)
-initial_root_dir="$current_dir"/GEM_delays/verification_plots/initial
-final_root_dir="$current_dir"/GEM_delays/verification_plots/final
-delays_dir="$current_dir"/GEM_delays/delays
-mcdonalds_dir="$current_dir"/GEM_mcdonalds_data
 
-# Check if the directory exists
-#if [ ! -d "$root_dir" ]; then
-#    echo "Error: Directory $root_dir not found."
-#    exit 1
-#fi
+# Determine subfolder name
+if [[ "$RUN_NUMBER" != "-1" ]]; then
+    RUN_SUBFOLDER="run${RUN_NUMBER}"
+else
+    RUN_SUBFOLDER="default"
+fi
+
+# Construct paths
+initial_root_dir="$current_dir/GEM_delays/${RUN_SUBFOLDER}/verification_plots/initial"
+final_root_dir="$current_dir/GEM_delays/${RUN_SUBFOLDER}/verification_plots/final"
+delays_dir="$current_dir/GEM_delays/${RUN_SUBFOLDER}/delays"
+mcdonalds_dir="$current_dir/GEM_mcdonalds_data/${RUN_SUBFOLDER}"
 
 if [[ "$CHECK_INITIAL_ONLY" -eq 1 ]]; then
     echo

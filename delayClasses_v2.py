@@ -12,13 +12,23 @@ import statistics
 
 #This is initialized at the chamber level. Every chamber will have to re-initialize this class.
 class delayGenerator():
-    def __init__(self, histo, histo_name, filename, reference_point=9, rebin_num=8, num_optimize_steps=5):
+    def __init__(self, histo, histo_name, filename, reference_point=9, rebin_num=8, num_optimize_steps=5, SPECIFY_RUN=False):
         if histo==None or histo_name==None:
             self.status = False
         
         else:
             self.status = True
-            
+
+            if SPECIFY_RUN != False:
+                if not isinstance(SPECIFY_RUN,int):
+                    print("THE RUN YOU SPECIFY SHOULD BE AN INT!")
+                    exit()
+
+                self.baseName = f"GEM_delays/run{SPECIFY_RUN}"
+
+            else:
+                self.baseName = "GEM_delays/default"
+
             #Getting parameters
             self.general = generalFunctions()
             self.histo, self.hotChannels = self.hotPadRemover(histo) #Input histo
@@ -55,7 +65,7 @@ class delayGenerator():
             #This is just for checking the effect of the delays
             self.final_amplitudes, self.final_means, self.final_sigmas, self.final_backgrounds = (
                 self.general.fit_2d_histogram(self.gbt_applied_histo, 
-                    output_file="GEM_delays/verification_plots/final/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root",
+                    output_file=f"{self.baseName}/verification_plots/final/finalFitInformation_"+self.gbt_applied_histo.GetName()+".root",
                     fit_range=[4,12]
                 )
             )
@@ -158,7 +168,7 @@ class delayGenerator():
         fit_amplitudes_hist, fit_means_hist, fit_sigmas_hist, fit_backgrounds_hist = (
             self.general.fit_2d_histogram(
                 rebinned_hist, 
-                output_file="GEM_delays/verification_plots/initial/fitInformation_"+self.histo_name+".root", 
+                output_file=f"{self.baseName}/verification_plots/initial/fitInformation_"+self.histo_name+".root", 
                 fit_range=[2,10]
             )
         )
@@ -232,7 +242,7 @@ class delayGenerator():
             opt_amplitudes_hist, opt_means_hist, opt_sigmas_hist, opt_backgrounds_hist = (
                 self.general.fit_2d_histogram(
                     corrected_data[1], 
-                    output_file=f"GEM_delays/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", 
+                    output_file=f"{self.baseName}/verification_plots/intermediate/optimizerCheck_{self.histo_name}_{i}.root", 
                     fit_range=[4,12]
                 )
             )

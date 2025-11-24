@@ -26,7 +26,6 @@ def ensure_folders_exist(base_folder, subfolders):
         else:
             print(f"Subfolder already exists: {folder_path}")
 
-ensure_folders_exist("GEM_mcdonalds_data", [])
-ensure_folders_exist("temp_canvas_images", [])
-ensure_folders_exist("GEM_delays", ["delays", "verification_plots", "verification_plots/final", "verification_plots/initial", "verification_plots/intermediate"])
+#ensure_folders_exist("temp_canvas_images", [])
+#ensure_folders_exist("GEM_delays", ["delays", "verification_plots", "verification_plots/final", "verification_plots/initial", "verification_plots/intermediate"])
 
