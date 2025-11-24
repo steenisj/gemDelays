@@ -8,6 +8,13 @@ This process is run in two parts:
 1) Execute: <br><br>```python3 generate_mcdonalds_plots.py -r [run number] -l [optional data limit: (n+1)*100,000 events within run]```<br><br> to generate the "McDonalds" 2d plots of padID vs bx. The outputs will be generated in a folder called GEM_mcdonalds_data.<br>
 2) Execute: <br><br>```python3 run.py -r [run number]```<br><br> to generate text (and root) outputs for the delays. The outputs will be in a newly generated folder called GEM_delays.
 
+Expanation of the scripts:
+1) generate_mcdonalds_plots.py is the script that generates the mcdonalds 2d plots of BX vs padID from the gems data (step 1).
+2) run.py runs the delay generation (step 2) and gives all the outputs.
+3) delayClasses.py stores all the data processing and delay generation classes/functions.
+4) setup.py contains the setup function for generating the folders within the repo (that store the outputs in a comprehensive way).
+5) checking_scripts/ directory contains all the scripts that generate the pdf views of the output .root plots that will be explained later in the README.md.
+
 Summary of outputs:
 1) For the first part of the processing, files appear in the run[run number] folder within GEM_mcdonalds_data directory. The files look like, for example, GE11_P_9_L2.root. The only object within is a TH2D named, for example, GE11_P_9_L2. This is the McDonalds plot for chamber GE11_P_9_L2.
    
