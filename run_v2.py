@@ -9,6 +9,8 @@ files = glob.glob("./GEM_mcdonalds_data/*.root")
 #files = glob.glob("./GEM_mcdonalds_data/GE11_P_34_L1.root")
 #files = glob.glob("./GEM_mcdonalds_data/GE11_M_15_L1.root")
 
+
+all_hot_channels = {}
 for i, input_file_name in enumerate(files): 
     print("-------------------------------------------------------------------------------------------------------------")
     print("\n\033[1;32mCurrently on file: \033[0m", input_file_name)
@@ -31,6 +33,13 @@ for i, input_file_name in enumerate(files):
 
     outfile = ROOT.TFile(f"GEM_delays/delays/{input_file_name.split('/')[-1].replace('.root','')}_delays.root", "RECREATE")
     DG.histo.Write()
+
+    for chamber, channels in DG.hotChannels.items():
+        if chamber not in all_hot_channels:
+            all_hot_channels[chamber] = set()
+
+        all_hot_channels[chamber].update(channels)
+
     DG.float_applied_histo.Write()
     DG.int_applied_histo.Write()
     DG.gbt_applied_histo.Write()
@@ -72,6 +81,10 @@ for i, input_file_name in enumerate(files):
                 header=False
             )
     print("-------------------------------------------------------------------------------------------------------------\n\n\n")
+
+    with open("GEM_delays/all_hot_channels.txt", "w") as f:
+        for chamber, channels in all_hot_channels.items():
+            f.write(f"{chamber}: {sorted(channels)}\n")
 
 print("\n-------------------------------------------------------------------------------------------------------------")
 print("\033[1;35mPROCESS COMPLETED!\033[0m")

@@ -21,7 +21,7 @@ class delayGenerator():
             
             #Getting parameters
             self.general = generalFunctions()
-            self.histo = self.hotPadRemover(histo) #Input histo
+            self.histo, self.hotChannels = self.hotPadRemover(histo) #Input histo
             self.histo_name = histo_name #Input histo name
             self.filename = filename
             self.reference_point = reference_point
@@ -337,6 +337,7 @@ class delayGenerator():
         return temp_df.drop_duplicates(subset=['fed', 'amc', 'oh', 'gbt'])
 
     def hotPadRemover(self, hist):
+        hot_chans = {}
         for bx in range(1, hist.GetNbinsX()+1):
             i_max_content = None
             max_content = 1
@@ -375,10 +376,16 @@ class delayGenerator():
                 count = hist.GetBinContent(bx, hist.GetYaxis().FindBin(i-1))
                 if abs(max_content-count)/max_content < 0.5 and count_nonzero > 8:
                     print(f"THROWING AWAY padID {bx} SINCE IT'S HOT!")
+
+                    if hist.GetName() not in hot_chans.keys():
+                        hot_chans[hist.GetName()] = [bx]
+                    else:
+                        hot_chans[hist.GetName()].append(bx)
+
                     for by in range(hist.GetNbinsY()):
                         hist.SetBinContent(bx, by, 0)
                         hist.SetBinError(bx, by, 0)
-        return hist
+        return hist, hot_chans
 
 #General functions used in the processing
 class generalFunctions():
