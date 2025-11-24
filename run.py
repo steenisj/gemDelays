@@ -29,6 +29,7 @@ if __name__ == '__main__':
         files = glob.glob(f"./GEM_mcdonalds_data/run{args.run}/*.root") #pull all files in the GEM_mcdonalds file for a specific run
 
     else:
+        print("\nYOU ARE USING THE DEFAULT OPTION WHICH USES RUN 393240; PLEASE SPECIFCY A RUN WITH -r")
         ensure_folders_exist("GEM_delays/default", subfolders)
         files = glob.glob("./GEM_mcdonalds_data/default/*.root") #pull all files in the GEM_mcdonalds file
 

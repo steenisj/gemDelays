@@ -57,6 +57,7 @@ if __name__ == '__main__':
         output_baseName = f"GEM_mcdonalds_data/run{args.run}/"
         ensure_folders_exist("GEM_mcdonalds_data", [f'run{args.run}'])
     else:
+        print("\nYOU ARE USING THE DEFAULT OPTION WHICH USES RUN 393240; PLEASE SPECIFCY A RUN WITH -r")
         pathName += f"393240"
         output_baseName = f"GEM_mcdonalds_data/default/"
         ensure_folders_exist("GEM_mcdonalds_data", ['default'])
