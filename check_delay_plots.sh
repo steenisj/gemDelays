@@ -45,6 +45,7 @@ current_dir=$(pwd 2>/dev/null)
 if [[ "$RUN_NUMBER" != "-1" ]]; then
     RUN_SUBFOLDER="run${RUN_NUMBER}"
 else
+    echo "YOU ARE RUNNING THE DEFAULT VERSION. IT'S BEST TO INSTEAD SPECIFY A RUN NUMBER WITH -r"
     RUN_SUBFOLDER="default"
 fi
 
